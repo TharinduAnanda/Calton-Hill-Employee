@@ -1,0 +1,120 @@
+.sidebar-drawer {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.sidebar-drawer .MuiDrawer-paper {
+    width: 280px;
+    box-sizing: border-box;
+    background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 100%);
+    color: #fff;
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-header {
+    padding: 24px 16px;
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.sidebar-title {
+    font-weight: 700;
+    color: #fff;
+    font-size: 1.3rem;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-welcome {
+    padding: 16px;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-welcome-text {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.sidebar-user-name {
+    color: #fff;
+    font-weight: 600;
+}
+
+.menu-section {
+    padding: 8px 0;
+}
+
+.menu-section-title {
+    padding: 8px 16px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+
+.sidebar-item {
+    margin: 4px 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.sidebar-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.sidebar-item-active {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-item-active .MuiListItemIcon-root,
+.sidebar-item:hover .MuiListItemIcon-root {
+    color: #fff;
+}
+
+.sidebar-item .MuiListItemIcon-root {
+    color: rgba(255, 255, 255, 0.7);
+    min-width: 40px;
+}
+
+.sidebar-item .MuiListItemText-primary {
+    font-weight: 500;
+}
+
+.footer-section {
+    margin-top: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-version {
+    padding: 12px 16px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.75rem;
+    text-align: center;
+}
+
+.logout-item {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.logout-item:hover {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+.logout-item:hover .MuiListItemIcon-root {
+    color: #f87171;
+}
