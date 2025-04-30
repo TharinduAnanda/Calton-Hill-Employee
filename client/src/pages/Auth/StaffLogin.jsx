@@ -1,97 +1,162 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
 import { 
+  Box, 
   TextField, 
   Button, 
-  Container, 
   Typography, 
-  Box, 
-  Alert, // Now used
-  CircularProgress 
+  Paper, 
+  CircularProgress, 
+  Alert 
 } from '@mui/material';
-import authService from '../../services/authService';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import authService from '../../services/authService';
+import './StaffLogin.css';
 
-const StaffLogin = () => {
+/**
+ * Staff Login Page Component
+ */
+function StaffLogin() {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { loginStaff } = useAuth(); // Changed from { login } to { loginStaff }
 
+  /**
+   * Handle input change events
+   * @param {Object} e - Event object
+   */
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData(prevState => ({
+      ...prevState,
+      [name]: value
+    }));
   };
 
+  /**
+   * Validate form data format
+   * @returns {boolean} - Form validity
+   */
+  const validateForm = () => {
+    setError('');
+
+    // Use authService to validate the email format
+    if (!authService.validateEmail(formData.email)) {
+      setError('Please enter a valid email address');
+      return false;
+    }
+
+    if (!formData.password) {
+      setError('Please enter your password');
+      return false;
+    }
+
+    return true;
+  };
+
+  /**
+   * Handle form submission
+   * @param {Object} e - Event object
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
+    setError('');
+    
     try {
-      const response = await authService.staffLogin(formData);
-      await login(formData.email, formData.password);
-      navigate(response.role === 'manager' ? '/manager/dashboard' : '/staff/dashboard');
+      // First, check if the staff credentials are valid using authService
+      const isStaffValid = await authService.verifyStaff(formData.email);
+      
+      if (!isStaffValid) {
+        setError('No staff account found with this email');
+        setLoading(false);
+        return;
+      }
+      
+      // Now try to login using loginStaff instead of login
+      await loginStaff(formData.email, formData.password);
+      navigate('/staff/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      console.error('Login error:', err);
+      setError(err.message || 'Failed to login. Please check your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <Typography variant="h4" component="h1" gutterBottom>
+    <Box className="login-container">
+      <Paper elevation={3} className="login-form">
+        <Typography variant="h4" component="h1" className="form-title">
           Staff Login
         </Typography>
-        {error && (
-          <Alert severity="error" sx={{ mb: 3, width: '100%' }}>
-            {error}
-          </Alert>
-        )}
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3, width: '100%' }}>
+        
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        
+        <form onSubmit={handleSubmit}>
           <TextField
-            fullWidth
             margin="normal"
-            label="Email"
+            required
+            fullWidth
+            id="email"
+            label="Email Address"
             name="email"
-            type="email"
+            autoComplete="email"
+            autoFocus
             value={formData.email}
             onChange={handleChange}
-            required
           />
           <TextField
-            fullWidth
             margin="normal"
-            label="Password"
+            required
+            fullWidth
             name="password"
+            label="Password"
             type="password"
+            id="password"
+            autoComplete="current-password"
             value={formData.password}
             onChange={handleChange}
-            required
           />
           <Button
             type="submit"
             fullWidth
             variant="contained"
-            sx={{ mt: 3, mb: 2 }}
+            color="primary"
+            className="submit-button"
             disabled={loading}
           >
             {loading ? <CircularProgress size={24} /> : 'Login'}
           </Button>
+        </form>
+        
+        <Box className="form-footer">
+          <Button 
+            color="primary" 
+            onClick={() => navigate('/forgot-password')}
+          >
+            Forgot password?
+          </Button>
+          <Button 
+            color="primary" 
+            onClick={() => navigate('/')}
+          >
+            Back to user selection
+          </Button>
         </Box>
-        <Box sx={{ textAlign: 'center', mt: 2 }}>
-          <Link to="/" style={{ textDecoration: 'none' }}>
-            <Button variant="text" color="primary">
-              ← Back to login selection
-            </Button>
-          </Link>
-        </Box>
-      </Box>
-    </Container>
+      </Paper>
+    </Box>
   );
-};
+}
 
 export default StaffLogin;

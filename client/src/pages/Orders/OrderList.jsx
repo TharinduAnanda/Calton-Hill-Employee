@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Paper, 
   Table, 
@@ -24,10 +24,84 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { getOrders } from '../../services/orderService';
+import { getAllOrders } from '../../services/orderService';
 import { formatDate, formatCurrency } from '../../utils/helpers';
 
-const OrderList = ({ refresh, onRefresh, statusFilter }) => {
+/**
+ * Fetches orders with optional status filter
+ * @param {Function} setOrders - State setter for orders
+ * @param {Function} setLoading - State setter for loading state
+ * @param {string} statusFilter - Optional status filter
+ */
+function fetchOrderData(setOrders, setLoading, statusFilter) {
+  setLoading(true);
+  
+  // Prepare params object for getAllOrders
+  const params = statusFilter ? { status: statusFilter } : {};
+  
+  getAllOrders(params)
+    .then(response => {
+      // Check for expected response structure
+      if (response && response.data) {
+        setOrders(response.data);
+      } else {
+        // Handle unexpected response format
+        console.error('Unexpected orders response format:', response);
+        setOrders([]);
+        toast.error('Unexpected data format received');
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching orders:', error);
+      toast.error('Failed to load orders');
+      setOrders([]);
+    })
+    .finally(() => {
+      setLoading(false);
+    });
+}
+
+/**
+ * Returns appropriate color for status chip
+ * @param {string} status - Order status
+ * @returns {string} Material-UI color name
+ */
+function getStatusColor(status) {
+  switch (status?.toLowerCase()) {
+    case 'pending': return 'warning';
+    case 'processing': return 'info';
+    case 'shipped': return 'primary';
+    case 'delivered': return 'success';
+    case 'cancelled': return 'error';
+    default: return 'default';
+  }
+}
+
+/**
+ * Filters orders based on search term
+ * @param {Array} orders - All orders
+ * @param {string} searchTerm - Search term
+ * @returns {Array} Filtered orders
+ */
+function filterOrders(orders, searchTerm) {
+  if (!searchTerm) return orders;
+  
+  const term = searchTerm.toLowerCase();
+  return orders.filter(order => 
+    order.orderNumber?.toString().includes(term) ||
+    order.customer?.name?.toLowerCase().includes(term) ||
+    order.status?.toLowerCase().includes(term)
+  );
+}
+
+/**
+ * Order List component
+ * @param {Object} props - Component props
+ * @param {boolean} props.refresh - Refresh trigger
+ * @param {Function} props.onRefresh - Refresh callback
+ * @param {string} props.statusFilter - Optional status filter
+ */
+function OrderList({ refresh, onRefresh, statusFilter }) {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,58 +109,60 @@ const OrderList = ({ refresh, onRefresh, statusFilter }) => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [search, setSearch] = useState('');
 
-  const fetchOrders = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await getOrders(statusFilter);
-      setOrders(response.data);
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      toast.error('Failed to load orders');
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter]);
-
+  // Effect for fetching orders
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders, refresh]);
+    fetchOrderData(setOrders, setLoading, statusFilter);
+  }, [statusFilter, refresh]);
 
-  const handleChangePage = (event, newPage) => {
+  /**
+   * Handles page change in pagination
+   * @param {Event} event - Change event
+   * @param {number} newPage - New page number
+   */
+  function handleChangePage(event, newPage) {
     setPage(newPage);
-  };
+  }
 
-  const handleChangeRowsPerPage = (event) => {
+  /**
+   * Handles rows per page change
+   * @param {Event} event - Change event
+   */
+  function handleChangeRowsPerPage(event) {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
-  };
+  }
 
-  const handleView = (id) => {
+  /**
+   * Navigates to order details
+   * @param {string} id - Order ID
+   */
+  function handleView(id) {
     navigate(`/orders/${id}`);
-  };
+  }
 
-  const handleViewInvoice = (id, e) => {
+  /**
+   * Navigates to order invoice
+   * @param {string} id - Order ID
+   * @param {Event} e - Click event
+   */
+  function handleViewInvoice(id, e) {
     e.stopPropagation();
     navigate(`/orders/${id}/invoice`);
-  };
+  }
 
-  const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
-      case 'pending': return 'warning';
-      case 'processing': return 'info';
-      case 'shipped': return 'primary';
-      case 'delivered': return 'success';
-      case 'cancelled': return 'error';
-      default: return 'default';
-    }
-  };
+  /**
+   * Handles search input change
+   * @param {Event} e - Change event
+   */
+  function handleSearchChange(e) {
+    setSearch(e.target.value);
+    setPage(0); // Reset to first page when searching
+  }
 
-  const filteredOrders = orders.filter(order => 
-    order.orderNumber?.toString().includes(search) ||
-    order.customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
-    order.status?.toLowerCase().includes(search.toLowerCase())
-  );
+  // Filter orders based on search
+  const filteredOrders = filterOrders(orders, search);
 
+  // Render component
   return (
     <>
       <Box mb={3}>
@@ -95,7 +171,7 @@ const OrderList = ({ refresh, onRefresh, statusFilter }) => {
           variant="outlined"
           placeholder="Search by order #, customer name or status..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={handleSearchChange}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -186,6 +262,6 @@ const OrderList = ({ refresh, onRefresh, statusFilter }) => {
       </Paper>
     </>
   );
-};
+}
 
 export default OrderList;

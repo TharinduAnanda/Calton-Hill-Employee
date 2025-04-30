@@ -17,7 +17,7 @@ import {
 import LineChartComponent from '../../components/common/LineChartComponent';
 import ControlCenter from './ControlCenter';
 import './OwnerDashboardPage.css';
-import StaffManagement from './StaffManagement';
+import StaffManagement from '../Staff/StaffManagement';
 
 const DashboardOverview = ({ stats }) => {
   return (
@@ -354,7 +354,7 @@ const OwnerDashboardPage = () => {
         </div>
 
         <div className="dashboard-footer">
-          © {new Date().getFullYear()} Inventory Pro - Owner Portal v2.5.0
+          © {new Date().getFullYear()} Calton Hill - Owner Portal v2.5.0
         </div>
       </div>
 

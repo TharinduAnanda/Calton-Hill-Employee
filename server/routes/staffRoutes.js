@@ -1,36 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const staffController = require('../controllers/staffController');
-const authMiddleware = require('../middleware/authMiddleware');
+const { protect, requireRole } = require('../middleware/authMiddleware');
 
-// Public routes
-router.post('/login', staffController.loginStaff);  // Changed from login to loginStaff
+// Apply authentication middleware to all routes
+router.use(protect);
 
-// Protected routes
-router.use(authMiddleware.protect);
+// GET /api/staff - Get all staff members (owner only)
+router.get('/', requireRole(['owner']), staffController.getAllStaff);
 
-// This route is duplicated - removing one
-router.get('/', 
-  authMiddleware.requireRole('owner'), 
-  staffController.getAllStaff
-);
+// GET /api/staff/:staffId - Get a specific staff member
+router.get('/:staffId', requireRole(['owner']), staffController.getStaffById);
 
-router.post('/', 
-  authMiddleware.requireRole('owner'), 
-  staffController.createStaff  // Changed from create to createStaff
-);
+// POST /api/staff - Create a new staff member (owner only)
+router.post('/', requireRole(['owner']), staffController.createStaff);
 
-router.get('/:id', 
-  staffController.getStaffById
-);
+// PUT /api/staff/:staffId - Update a staff member
+router.put('/:staffId', requireRole(['owner']), staffController.updateStaff);
 
-router.put('/:id', 
-  staffController.updateStaff
-);
+// DELETE /api/staff/:staffId - Delete a staff member (owner only)
+router.delete('/:staffId', requireRole(['owner']), staffController.deleteStaff);
 
-router.delete('/:id', 
-  authMiddleware.requireRole('owner'), 
-  staffController.deleteStaff
-);
+// PUT /api/staff/profile - Update own profile (for staff members)
+router.put('/profile', requireRole(['staff', 'manager']), staffController.updateSelfProfile);
 
 module.exports = router;

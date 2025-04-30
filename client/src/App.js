@@ -1,42 +1,50 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
-import CssBaseline from '@mui/material/CssBaseline';
+import {  Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import routes from './routes';
 import Navbar from './components/Navbar/Navbar';
 import Sidebar from './components/common/Sidebar';
-import ThemeProviderWrapper from './components/ThemeProvider/ThemeProviderWrapper';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import StaffManagement from './pages/Staff/StaffManagement';
+import OwnerDashboardPage from './pages/Owner/OwnerDashboardPage';
+import DashboardRedirect from './components/common/DashboardRedirect';
+import StaffDashboard from './pages/Staff/StaffDashboard';
 
-const ErrorComponents = {
-  Unauthorized: () => (
-    <div style={{ padding: '50px', textAlign: 'center' }}>
-      <h1>Unauthorized Access</h1>
-      <p>You don't have permission to access this resource.</p>
-    </div>
-  ),
-  NotFound: () => (
-    <div style={{ padding: '50px', textAlign: 'center' }}>
-      <h1>404 - Page Not Found</h1>
-      <p>The page you are looking for does not exist.</p>
-    </div>
-  )
-};
+// Define error components as standalone components
+const UnauthorizedPage = () => (
+  <div style={{ padding: '50px', textAlign: 'center' }}>
+    <h1>Unauthorized Access</h1>
+    <p>You don't have permission to access this resource.</p>
+  </div>
+);
 
-// Removed the unused RootRedirect component
+const NotFoundPage = () => (
+  <div style={{ padding: '50px', textAlign: 'center' }}>
+    <h1>404 - Page Not Found</h1>
+    <p>The page you are looking for does not exist.</p>
+  </div>
+);
 
 function App() {
   return (
-    <ThemeProviderWrapper>
-      <CssBaseline />
-      <BrowserRouter>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </BrowserRouter>
-    </ThemeProviderWrapper>
+    <>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+      <ToastContainer
+        position="bottom-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+    </>
   );
 }
 
@@ -75,7 +83,7 @@ const MainLayout = ({ children }) => {
     '/', 
     '/owner-login', 
     '/staff-login',
-    '/login', // Added '/login' to the auth pages
+    '/login',
     '/forgot-password'
   ].includes(location.pathname);
   
@@ -159,23 +167,53 @@ const AppContent = () => {
                 }
               />
             ))}
+          <Route 
+            path="/staff/management" 
+            element={
+              <ProtectedRoute 
+                allowedRoles={['owner']}
+                fallbackPath="/unauthorized"
+              >
+                <StaffManagement />
+              </ProtectedRoute>
+            }
+          />
           
-          {/* Error routes */}
-          <Route path="/unauthorized" element={<ErrorComponents.Unauthorized />} />
-          <Route path="*" element={<ErrorComponents.NotFound />} />
+          {/* Dashboard route */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={['owner', 'manager', 'staff']}>
+                <DashboardRedirect />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Owner dashboard route */}
+          <Route 
+            path="/owner/dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <OwnerDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Staff dashboard route */}
+          <Route 
+            path="/staff/dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={['staff', 'manager']}>
+                <StaffDashboard />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Error routes - Using direct components instead of referencing the object */}
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </MainLayout>
-      <ToastContainer
-        position="bottom-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
     </>
   );
 };

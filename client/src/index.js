@@ -2,16 +2,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { AuthProvider } from './contexts/AuthContext';
-import ThemeProviderWrapper from './components/ThemeProvider/ThemeProviderWrapper'; 
+import { BrowserRouter } from 'react-router-dom';
+import ThemeProviderWrapper from './components/ThemeProvider/ThemeProviderWrapper';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <ThemeProviderWrapper> {/* Wrap AuthProvider with ThemeProvider */}
-      <AuthProvider>
+    <ThemeProviderWrapper>
+      <BrowserRouter>
         <App />
-      </AuthProvider>
+      </BrowserRouter>
     </ThemeProviderWrapper>
   </React.StrictMode>
 );

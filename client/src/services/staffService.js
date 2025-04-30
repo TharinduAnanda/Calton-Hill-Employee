@@ -1,16 +1,13 @@
-import { useState } from 'react';
 import instance from '../utils/axiosConfig';
+import { useState } from 'react';
 
 /**
- * Enhanced Staff Service with:
- * - Better error handling
- * - Consistent response formats
- * - Request cancellation
- * - Input validation
+ * Handle API errors consistently
+ * @param {Error} error - The error object
+ * @param {string} defaultMessage - Default error message
+ * @throws {Error} Formatted error
  */
-
-// Helper function to handle API errors
-const handleApiError = (error, defaultMessage = 'An error occurred') => {
+function handleApiError(error, defaultMessage = 'An error occurred') {
   console.error('API Error:', {
     status: error.response?.status,
     message: error.response?.data?.message || error.message,
@@ -26,211 +23,273 @@ const handleApiError = (error, defaultMessage = 'An error occurred') => {
   }
 
   throw new Error(error.response?.data?.message || defaultMessage);
-};
+}
 
-// Validate staff data before sending to API
-const validateStaffData = (data, isUpdate = false) => {
+/**
+ * Validate staff data before sending to API
+ * @param {Object} data - The staff data to validate
+ * @param {boolean} isUpdate - Whether this is an update operation
+ * @returns {Object} Normalized staff data
+ */
+function validateStaffData(data, isUpdate = false) {
   const errors = [];
   
-  if (!data.name) errors.push('Name is required');
-  if (!data.email) errors.push('Email is required');
-  if (!isUpdate && !data.password) errors.push('Password is required');
+  // Check required fields
+  if (!data.first_name && !data.First_Name && !isUpdate) {
+    errors.push('First name is required');
+  }
+  
+  if (!data.last_name && !data.Last_Name && !isUpdate) {
+    errors.push('Last name is required');
+  }
+  
+  if (!data.email && !data.Email && !isUpdate) {
+    errors.push('Email is required');
+  }
+  
+  if (!isUpdate && !data.password && !data.Password) {
+    errors.push('Password is required');
+  }
   
   if (errors.length > 0) {
     throw new Error(errors.join(', '));
   }
 
+  // Transform data to ensure consistent format
   return {
-    ...data,
-    // Ensure role is always lowercase
-    role: data.role?.toLowerCase() || 'staff'
+    first_name: data.first_name || data.First_Name,
+    last_name: data.last_name || data.Last_Name,
+    email: data.email || data.Email,
+    phone_number: data.phone_number || data.Phone_Number || null,
+    password: data.password || data.Password,
+    role: (data.role || data.Role || 'staff').toLowerCase(),
+    address: data.address || null
   };
-};
+}
 
-// Get all staff members with pagination support
-export const getAllStaff = async (params = {}) => {
+/**
+ * Create a new staff member
+ * @param {Object} staffData - Staff data to create
+ * @returns {Promise<Object>} Created staff data
+ */
+function createStaff(staffData) {
   try {
-    const response = await instance.get('/staff', { params });
-    
-    if (!response.data?.success) {
-      throw new Error(response.data?.message || 'Invalid response format');
-    }
-
-    return {
-      data: response.data.data || [],
-      total: response.data.total || 0,
-      page: response.data.page || 1,
-      limit: response.data.limit || 10
-    };
-  } catch (error) {
-    return handleApiError(error, 'Failed to fetch staff members');
-  }
-};
-
-// Get staff member by ID with enhanced error handling
-export const getStaffById = async (id) => {
-  try {
-    if (!id) throw new Error('Staff ID is required');
-    
-    const response = await instance.get(`/staff/${id}`);
-    
-    if (!response.data?.success) {
-      throw new Error(response.data?.message || 'Invalid response format');
-    }
-
-    return response.data.data;
-  } catch (error) {
-    return handleApiError(error, 'Failed to fetch staff member');
-  }
-};
-
-// Create new staff member with validation
-export const createStaff = async (staffData) => {
-  try {
+    // Use validateStaffData to validate and normalize input
     const validatedData = validateStaffData(staffData);
-    const response = await instance.post('/staff', validatedData);
     
-    if (!response.data?.success) {
-      throw new Error(response.data?.message || 'Failed to create staff');
-    }
-
-    return response.data.data;
+    return instance.post('/api/staff', validatedData)
+      .then(response => {
+        if (!response.data?.success) {
+          throw new Error(response.data?.message || 'Failed to create staff');
+        }
+        
+        return response.data.data;
+      })
+      .catch(error => {
+        return handleApiError(error, 'Failed to create staff member');
+      });
   } catch (error) {
-    return handleApiError(error, 'Failed to create staff member');
+    return Promise.reject(error);
   }
-};
+}
 
-// Update staff member with validation
-export const updateStaff = async (id, staffData) => {
+/**
+ * Update an existing staff member
+ * @param {string} staffId - ID of staff to update
+ * @param {Object} staffData - Staff data to update
+ * @returns {Promise<Object>} Updated staff data
+ */
+function updateStaff(staffId, staffData) {
   try {
-    if (!id) throw new Error('Staff ID is required');
-    
+    // Validate with isUpdate=true to make password optional
     const validatedData = validateStaffData(staffData, true);
-    const response = await instance.put(`/staff/${id}`, validatedData);
     
-    if (!response.data?.success) {
-      throw new Error(response.data?.message || 'Failed to update staff');
-    }
-
-    return response.data.data;
+    return instance.put(`/api/staff/${staffId}`, validatedData)
+      .then(response => {
+        if (!response.data?.success) {
+          throw new Error(response.data?.message || 'Failed to update staff');
+        }
+        
+        return response.data.data;
+      })
+      .catch(error => {
+        return handleApiError(error, 'Failed to update staff member');
+      });
   } catch (error) {
-    return handleApiError(error, 'Failed to update staff member');
+    return Promise.reject(error);
   }
-};
+}
 
-// Delete staff member with confirmation
-export const deleteStaff = async (id) => {
-  try {
-    if (!id) throw new Error('Staff ID is required');
-    
-    const response = await instance.delete(`/staff/${id}`);
-    
-    if (!response.data?.success) {
-      throw new Error(response.data?.message || 'Failed to delete staff');
-    }
-
-    return response.data.data;
-  } catch (error) {
-    return handleApiError(error, 'Failed to delete staff member');
-  }
-};
-
-// Change staff password with validation
-export const changePassword = async (id, { currentPassword, newPassword }) => {
-  try {
-    if (!id) throw new Error('Staff ID is required');
-    if (!currentPassword || !newPassword) {
-      throw new Error('Current and new password are required');
-    }
-    
-    const response = await instance.put(`/staff/${id}/change-password`, {
-      currentPassword,
-      newPassword
+/**
+ * Get all staff with pagination
+ * @param {number} page - Page number
+ * @param {number} limit - Items per page
+ * @returns {Promise<Object>} Staff list and pagination data
+ */
+function getAllStaff(page = 1, limit = 10) {
+  return instance.get(`/api/staff?page=${page}&limit=${limit}`)
+    .then(response => {
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || 'Invalid response format');
+      }
+      
+      return {
+        data: response.data.data.staff || [],
+        total: response.data.data.total || 0,
+        page,
+        limit
+      };
+    })
+    .catch(error => {
+      return handleApiError(error, 'Failed to fetch staff list');
     });
-    
-    return response.data;
-  } catch (error) {
-    return handleApiError(error, 'Failed to change password');
-  }
-};
+}
 
-// Update staff role with validation
-export const updateStaffRole = async (id, role) => {
-  try {
-    if (!id) throw new Error('Staff ID is required');
-    if (!['staff', 'manager', 'admin'].includes(role?.toLowerCase())) {
-      throw new Error('Invalid role specified');
-    }
-    
-    const response = await instance.put(`/staff/${id}/role`, { role });
-    return response.data;
-  } catch (error) {
-    return handleApiError(error, 'Failed to update role');
+/**
+ * Get a specific staff member by ID
+ * @param {string} staffId - ID of staff to retrieve
+ * @returns {Promise<Object>} Staff data
+ */
+function getStaffById(staffId) {
+  if (!staffId) {
+    return Promise.reject(new Error('Staff ID is required'));
   }
-};
+  
+  return instance.get(`/api/staff/${staffId}`)
+    .then(response => {
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || 'Failed to fetch staff details');
+      }
+      
+      return response.data.data;
+    })
+    .catch(error => {
+      return handleApiError(error, 'Failed to fetch staff details');
+    });
+}
 
-// Get staff statistics
-export const getStaffStats = async () => {
-  try {
-    const response = await instance.get('/staff/stats');
-    return response.data;
-  } catch (error) {
-    return handleApiError(error, 'Failed to fetch staff statistics');
+/**
+ * Delete a staff member
+ * @param {string} staffId - ID of staff to delete
+ * @returns {Promise<Object>} Result of deletion
+ */
+function deleteStaff(staffId) {
+  if (!staffId) {
+    return Promise.reject(new Error('Staff ID is required'));
   }
-};
+  
+  return instance.delete(`/api/staff/${staffId}`)
+    .then(response => {
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || 'Failed to delete staff member');
+      }
+      
+      return response.data.data;
+    })
+    .catch(error => {
+      return handleApiError(error, 'Failed to delete staff member');
+    });
+}
 
-// Custom hook for staff management
-export const useStaff = () => {
+/**
+ * Custom hook for staff management
+ * @returns {Object} Staff management functions and state
+ */
+function useStaff() {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0
+  });
 
-  const fetchStaff = async () => {
+  function fetchStaff(page = 1, limit = 10) {
     setLoading(true);
     setError(null);
-    try {
-      const data = await getAllStaff();
-      setStaffList(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    
+    return getAllStaff(page, limit)
+      .then(result => {
+        setStaffList(result.data);
+        setPagination({
+          page: result.page,
+          limit: result.limit,
+          total: result.total
+        });
+        return result;
+      })
+      .catch(err => {
+        setError(err.message);
+        throw err;
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }
 
   return {
     staffList,
     loading,
     error,
+    pagination,
     fetchStaff,
     createStaff: async (staffData) => {
-      const result = await createStaff(staffData);
-      await fetchStaff(); // Refresh list
-      return result;
+      try {
+        const result = await createStaff(staffData);
+        await fetchStaff(pagination.page, pagination.limit);
+        return result;
+      } catch (error) {
+        setError(error.message);
+        throw error;
+      }
     },
     updateStaff: async (id, staffData) => {
-      const result = await updateStaff(id, staffData);
-      await fetchStaff(); // Refresh list
-      return result;
+      try {
+        const result = await updateStaff(id, staffData);
+        await fetchStaff(pagination.page, pagination.limit);
+        return result;
+      } catch (error) {
+        setError(error.message);
+        throw error;
+      }
     },
     deleteStaff: async (id) => {
-      const result = await deleteStaff(id);
-      await fetchStaff(); // Refresh list
-      return result;
-    }
+      try {
+        const result = await deleteStaff(id);
+        await fetchStaff(pagination.page, pagination.limit);
+        return result;
+      } catch (error) {
+        setError(error.message);
+        throw error;
+      }
+    },
+    resetError: () => setError(null)
   };
-};
+}
 
+// Create a named object for the staff service
 const staffService = {
-  getAllStaff,
-  getStaffById,
   createStaff,
   updateStaff,
+  getAllStaff,
+  getStaffById,
   deleteStaff,
-  changePassword,
-  updateStaffRole,
-  getStaffStats,
-  useStaff
+  validateStaffData,
+  handleApiError
 };
 
+// Export individual functions for direct use
+export {
+  createStaff,
+  updateStaff,
+  getAllStaff,
+  getStaffById,
+  deleteStaff,
+  useStaff,
+  validateStaffData,
+  handleApiError
+};
+
+// Export the named service object as default
 export default staffService;

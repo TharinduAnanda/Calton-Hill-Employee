@@ -1,156 +1,109 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import {
-  Box,
-  Drawer,
-  List,
-  ListItemIcon,
-  ListItemText,
-  Typography,
-  Avatar,
-  Tooltip,
-  ListItemButton,
+import { Link } from 'react-router-dom';
+import { 
+  Drawer, 
+  List, 
+  ListItem, 
+  ListItemIcon, 
+  ListItemText, 
+  Divider,
+  Box
 } from '@mui/material';
-import {
-  Dashboard as DashboardIcon,
-  Inventory as InventoryIcon,
-  Category as ProductIcon,
-  People as SupplierIcon,
-  ShoppingCart as OrderIcon,
-  Settings as SettingsIcon,
-  ExitToApp as LogoutIcon,
-  Analytics as AnalyticsIcon,
-  Storefront as StorefrontIcon,
-} from '@mui/icons-material';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import PeopleIcon from '@mui/icons-material/People';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import SettingsIcon from '@mui/icons-material/Settings';
+import { useAuth } from '../../contexts/AuthContext';
 import './Sidebar.css';
 
-const Sidebar = () => {
-  const location = useLocation();
-  const { logout, user } = useAuth();
-
-  const mainMenuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-    { text: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics' },
-    { text: 'Inventory', icon: <InventoryIcon />, path: '/inventory' },
-  ];
-
-  const catalogMenuItems = [
-    { text: 'Products', icon: <ProductIcon />, path: '/products' },
-    { text: 'Suppliers', icon: <SupplierIcon />, path: '/suppliers' },
-    { text: 'Store', icon: <StorefrontIcon />, path: '/store' },
-    { text: 'Orders', icon: <OrderIcon />, path: '/orders' },
-  ];
-
-  const isActive = (path) => {
-    if (path === '/' && location.pathname === '/') return true;
-    if (path !== '/' && location.pathname.startsWith(path)) return true;
-    return false;
-  };
-
-  const firstLetter = user?.name?.charAt(0) || 'U';
-
+/**
+ * Sidebar navigation component
+ * @param {Object} props - Component props
+ * @param {boolean} props.open - Whether the sidebar is open
+ * @param {Function} props.onClose - Function to close the sidebar
+ */
+function Sidebar({ open, onClose }) {
+  const { currentUser } = useAuth();
+  
+  /**
+   * Get appropriate dashboard link based on user role
+   * @returns {string} Dashboard link path
+   */
+  function getDashboardLink() {
+    if (!currentUser) return '/login';
+    
+    if (currentUser.role === 'owner') {
+      return '/owner/dashboard';
+    } else {
+      return '/staff/dashboard';
+    }
+  }
+  
+  const dashboardLink = getDashboardLink();
+  const showStaffManagement = currentUser?.role === 'owner';
+  
   return (
     <Drawer
-      variant="permanent"
-      className="sidebar-drawer"
+      variant="persistent"
+      anchor="left"
+      open={open}
+      onClose={onClose}
+      sx={{
+        width: 240,
+        flexShrink: 0,
+        '& .MuiDrawer-paper': {
+          width: 240,
+          boxSizing: 'border-box',
+        },
+      }}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <Box className="sidebar-header">
-          <Box className="sidebar-logo">
-            <InventoryIcon fontSize="large" />
-            <Typography variant="h6" component="div" className="sidebar-title">
-              Calton Hill
-            </Typography>
-          </Box>
-        </Box>
+      <Box sx={{ overflow: 'auto' }}>
+        <List>
+          <ListItem component={Link} to={dashboardLink}>
+            <ListItemIcon>
+              <DashboardIcon />
+            </ListItemIcon>
+            <ListItemText primary="Dashboard" />
+          </ListItem>
+          
+          {showStaffManagement && (
+            <ListItem component={Link} to="/staff/management">
+              <ListItemIcon>
+                <PeopleIcon />
+              </ListItemIcon>
+              <ListItemText primary="Staff Management" />
+            </ListItem>
+          )}
+          
+          <ListItem component={Link} to="/inventory">
+            <ListItemIcon>
+              <InventoryIcon />
+            </ListItemIcon>
+            <ListItemText primary="Inventory" />
+          </ListItem>
+          
+          <ListItem component={Link} to="/orders">
+            <ListItemIcon>
+              <ShoppingCartIcon />
+            </ListItemIcon>
+            <ListItemText primary="Orders" />
+          </ListItem>
+        </List>
         
-        <Box className="sidebar-welcome">
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Avatar sx={{ bgcolor: '#60a5fa', width: 40, height: 40 }}>
-              {firstLetter}
-            </Avatar>
-            <Box>
-              <Typography variant="body2" className="sidebar-welcome-text">
-                Welcome,
-              </Typography>
-              <Typography variant="body1" className="sidebar-user-name">
-                {user?.name || 'User'}
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
+        <Divider />
         
-        <Box className="menu-section">
-          <Typography className="menu-section-title">
-            Main
-          </Typography>
-          <List>
-            {mainMenuItems.map((item) => (
-              <ListItemButton
-                component={Link}
-                to={item.path}
-                className={`sidebar-item ${isActive(item.path) ? 'sidebar-item-active' : ''}`}
-              >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.text} />
-              </ListItemButton>
-            ))}
-          </List>
-        </Box>
-        
-        <Box className="menu-section">
-          <Typography className="menu-section-title">
-            Catalog
-          </Typography>
-          <List>
-            {catalogMenuItems.map((item) => (
-              <ListItemButton
-                component={Link}
-                to={item.path}
-                className={`sidebar-item ${isActive(item.path) ? 'sidebar-item-active' : ''}`}
-              >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.text} />
-              </ListItemButton>
-            ))}
-          </List>
-        </Box>
-        
-        <Box className="footer-section" sx={{ marginTop: 'auto' }}>
-          <List>
-            <Tooltip title="Settings" placement="right">
-              <ListItemButton
-                component={Link}
-                to="/settings"
-                className="sidebar-item"
-              >
-                <ListItemIcon>
-                  <SettingsIcon />
-                </ListItemIcon>
-                <ListItemText primary="Settings" />
-              </ListItemButton>
-            </Tooltip>
-            <Tooltip title="Logout" placement="right">
-              <ListItemButton
-                onClick={logout}
-                className="sidebar-item logout-item"
-                sx={{ cursor: 'pointer' }}
-              >
-                <ListItemIcon>
-                  <LogoutIcon />
-                </ListItemIcon>
-                <ListItemText primary="Logout" />
-              </ListItemButton>
-            </Tooltip>
-          </List>
-          <Typography className="sidebar-version">
-            v2.5.0
-          </Typography>
-        </Box>
+        <List>
+          <ListItem component={Link} to="/settings">
+            <ListItemIcon>
+              <SettingsIcon />
+            </ListItemIcon>
+            <ListItemText primary="Settings" />
+          </ListItem>
+        </List>
       </Box>
     </Drawer>
   );
-};
+}
 
 export default Sidebar;

@@ -1,66 +1,134 @@
-import axios from '../utils/axiosConfig';
+import axios from 'axios';
 
+// Constants
 const API_URL = '/api/orders';
 
-export const getOrders = async () => {
-  try {
-    const response = await axios.get(API_URL);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || { message: 'Failed to fetch orders' };
-  }
+/**
+ * Handle API errors consistently
+ * @param {Error} error - The error object
+ * @param {string} defaultMessage - Default error message
+ * @throws {Error} Formatted error
+ */
+function handleApiError(error, defaultMessage) {
+  console.error('Order API Error:', error);
+  throw error.response?.data || { message: defaultMessage };
+}
+
+/**
+ * Get all orders with optional pagination
+ * @param {Object} params - Query parameters
+ * @returns {Promise<Object>} Orders data
+ */
+function getAllOrders(params = {}) {
+  const queryString = new URLSearchParams(params).toString();
+  const url = queryString ? `${API_URL}?${queryString}` : API_URL;
+  
+  return axios.get(url)
+    .then(response => response.data)
+    .catch(error => {
+      return handleApiError(error, 'Failed to fetch orders');
+    });
+}
+
+/**
+ * Get order by ID
+ * @param {string} id - Order ID
+ * @returns {Promise<Object>} Order data
+ */
+function getOrderById(id) {
+  return axios.get(`${API_URL}/${id}`)
+    .then(response => response.data)
+    .catch(error => {
+      return handleApiError(error, 'Failed to fetch order details');
+    });
+}
+
+/**
+ * Create a new order
+ * @param {Object} orderData - Order data
+ * @returns {Promise<Object>} Created order data
+ */
+function createOrder(orderData) {
+  return axios.post(API_URL, orderData)
+    .then(response => response.data)
+    .catch(error => {
+      return handleApiError(error, 'Failed to create order');
+    });
+}
+
+/**
+ * Update an existing order
+ * @param {string} id - Order ID
+ * @param {Object} orderData - Order data to update
+ * @returns {Promise<Object>} Updated order data
+ */
+function updateOrder(id, orderData) {
+  return axios.put(`${API_URL}/${id}`, orderData)
+    .then(response => response.data)
+    .catch(error => {
+      return handleApiError(error, 'Failed to update order');
+    });
+}
+
+/**
+ * Delete an order
+ * @param {string} id - Order ID
+ * @returns {Promise<Object>} Result of deletion
+ */
+function deleteOrder(id) {
+  return axios.delete(`${API_URL}/${id}`)
+    .then(response => response.data)
+    .catch(error => {
+      return handleApiError(error, 'Failed to delete order');
+    });
+}
+
+/**
+ * Update an order's status
+ * @param {string} id - Order ID
+ * @param {string} status - New status
+ * @returns {Promise<Object>} Updated order data
+ */
+function updateOrderStatus(id, status) {
+  return axios.patch(`${API_URL}/${id}/status`, { status })
+    .then(response => response.data)
+    .catch(error => {
+      return handleApiError(error, 'Failed to update order status');
+    });
+}
+
+/**
+ * Get order items
+ * @param {string} id - Order ID
+ * @returns {Promise<Array>} Order items
+ */
+function getOrderItems(id) {
+  return axios.get(`${API_URL}/${id}/items`)
+    .then(response => response.data)
+    .catch(error => {
+      return handleApiError(error, 'Failed to fetch order items');
+    });
+}
+
+// Create named service object
+const orderService = {
+  getAllOrders,
+  getOrderById,
+  createOrder,
+  updateOrder,
+  deleteOrder,
+  updateOrderStatus,
+  getOrderItems
 };
 
-export const getOrderById = async (id) => {
-  try {
-    const response = await axios.get(`${API_URL}/${id}`);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || { message: 'Failed to fetch order' };
-  }
+export {
+  getAllOrders,
+  getOrderById,
+  createOrder,
+  updateOrder,
+  deleteOrder,
+  updateOrderStatus,
+  getOrderItems
 };
 
-export const createOrder = async (orderData) => {
-  try {
-    const response = await axios.post(API_URL, orderData);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || { message: 'Failed to create order' };
-  }
-};
-
-export const updateOrder = async (id, orderData) => {
-  try {
-    const response = await axios.put(`${API_URL}/${id}`, orderData);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || { message: 'Failed to update order' };
-  }
-};
-
-export const deleteOrder = async (id) => {
-  try {
-    const response = await axios.delete(`${API_URL}/${id}`);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || { message: 'Failed to delete order' };
-  }
-};
-
-export const updateOrderStatus = async (id, status) => {
-  try {
-    const response = await axios.patch(`${API_URL}/${id}/status`, { status });
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || { message: 'Failed to update order status' };
-  }
-};
-
-export const getOrderItems = async (id) => {
-  try {
-    const response = await axios.get(`${API_URL}/${id}/items`);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || { message: 'Failed to fetch order items' };
-  }
-};
+export default orderService;

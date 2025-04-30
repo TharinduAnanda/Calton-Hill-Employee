@@ -1,58 +1,72 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Typography, Container } from '@mui/material';
-import { styled } from '@mui/material/styles';
-
-const SelectionButton = styled(Button)(({ theme }) => ({
-  height: '80px',
-  fontSize: '1.2rem',
-  fontWeight: 'bold',
-  borderRadius: '12px',
-  boxShadow: theme.shadows[3],
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    transform: 'translateY(-3px)',
-    boxShadow: theme.shadows[6]
-  }
-}));
+import { 
+  Box, 
+  Container, 
+  Typography, 
+  Button, 
+  Paper 
+} from '@mui/material';
+import ShopIcon from '@mui/icons-material/Store';
+import PeopleIcon from '@mui/icons-material/People';
+import './UserTypeSelection.css';
 
 const UserTypeSelection = () => {
   const navigate = useNavigate();
 
   return (
-    <Container maxWidth="sm" sx={{ height: '100vh', display: 'flex', alignItems: 'center' }}>
-      <Box sx={{ 
-        width: '100%',
-        textAlign: 'center',
-        p: 4,
-        borderRadius: 4,
-        boxShadow: 3,
-        backgroundColor: 'background.paper'
-      }}>
-        <Typography variant="h3" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
+    <Container maxWidth="sm" className="user-selection-container">
+      <Paper elevation={3} className="user-selection-paper">
+        <Box className="app-logo">
+          <ShopIcon fontSize="large" />
+        </Box>
+        
+        <Typography variant="h4" className="selection-title">
           Store Management System
         </Typography>
-        <Typography variant="h6" color="text.secondary" sx={{ mb: 5 }}>
-          Select your login type
+        
+        <Typography variant="body1" className="selection-subtitle">
+          Select your login type to continue
         </Typography>
         
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <SelectionButton
+        <Box className="selection-buttons">
+          <Button
             variant="contained"
             color="primary"
+            fullWidth
             onClick={() => navigate('/owner-login')}
+            className="owner-button"
+            startIcon={<ShopIcon />}
           >
             Owner Portal
-          </SelectionButton>
-          <SelectionButton
-            variant="contained"
+          </Button>
+          
+          <Typography variant="body2" className="option-divider">
+            or
+          </Typography>
+          
+          <Button
+            variant="outlined"
             color="secondary"
+            fullWidth
             onClick={() => navigate('/staff-login')}
+            className="staff-button"
+            startIcon={<PeopleIcon />}
           >
             Staff Portal
-          </SelectionButton>
+          </Button>
         </Box>
-      </Box>
+        
+        <Box className="help-section">
+          <Typography variant="body2" className="help-text">
+            Need help? <span className="help-link" onClick={() => navigate('/help')}>Contact support</span>
+          </Typography>
+        </Box>
+      </Paper>
+      
+      <Typography variant="caption" className="copyright-text">
+        © {new Date().getFullYear()} Store Management System. All rights reserved.
+      </Typography>
     </Container>
   );
 };

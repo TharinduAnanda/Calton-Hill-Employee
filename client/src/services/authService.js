@@ -1,7 +1,89 @@
 import axios from '../utils/axiosConfig';
 import { jwtDecode } from 'jwt-decode';
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5000') + '/api';
+/**
+ * Validate email format
+ * @param {string} email - Email to validate
+ * @returns {boolean} - Whether the email is valid
+ */
+function validateEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+/**
+ * Verify if a staff member with the given email exists
+ * @param {string} email - Staff email to verify
+ * @returns {Promise<boolean>} - Whether the staff exists
+ */
+async function verifyStaff(email) {
+  try {
+    const response = await axios.post('/api/auth/verify-staff', { email });
+    return response.data.exists;
+  } catch (error) {
+    // Only log errors that aren't 404 (since we know this endpoint might not exist yet)
+    if (error.response?.status !== 404) {
+      console.error('Staff verification error:', error);
+    } else {
+      console.log('Staff verification endpoint not implemented, skipping check');
+    }
+    // Continue with login process
+    return true;
+  }
+}
+
+/**
+ * Login a staff member
+ * @param {string} email - Staff email
+ * @param {string} password - Staff password 
+ * @returns {Promise} - Promise that resolves with the login response
+ */
+function loginStaff(email, password) {
+  return axios.post('/api/auth/login', { email, password })
+    .then(response => {
+      // Store auth data on successful login
+      if (response.data?.token) {
+        storeAuthData(response.data.token, response.data.user || response.data.staff);
+      }
+      return response;
+    });
+}
+
+/**
+ * Login an owner
+ * @param {string} email - Owner email
+ * @param {string} password - Owner password
+ * @returns {Promise} - Promise that resolves with the login response
+ */
+function loginOwner(email, password) {
+  return axios.post('/api/auth/owner/login', { email, password })
+    .then(response => {
+      // Store auth data on successful login
+      if (response.data?.token) {
+        storeAuthData(response.data.token, response.data.user || response.data.owner);
+      }
+      return response;
+    });
+}
+
+/**
+ * Send password reset request
+ * @param {string} email - User email
+ * @returns {Promise} - Promise that resolves with the request response
+ */
+function requestPasswordReset(email) {
+  return axios.post('/api/auth/password-reset-request', { email });
+}
+
+/**
+ * Reset password with token
+ * @param {string} token - Reset token
+ * @param {string} password - New password
+ * @returns {Promise} - Promise that resolves with the reset response
+ */
+function resetPassword(token, password) {
+  return axios.post('/api/auth/reset-password', { token, password });
+}
 
 // Helper functions
 const validateJWT = (token) => {
@@ -11,7 +93,7 @@ const validateJWT = (token) => {
       return { valid: false, error: 'Invalid token structure' };
     }
 
-    const payload = jwtDecode(token); // Changed from jwt_decode to jwtDecode
+    const payload = jwtDecode(token);
     
     if (!payload.userId || !payload.exp) {
       return { valid: false, error: 'Missing required token claims' };
@@ -20,7 +102,7 @@ const validateJWT = (token) => {
     if (Date.now() >= payload.exp * 1000) {
       return { valid: false, error: 'Token has expired' };
     }
-
+    
     return { valid: true, payload };
   } catch (error) {
     return { valid: false, error: 'Invalid token: ' + error.message };
@@ -46,76 +128,6 @@ const clearAuthData = () => {
   }
 };
 
-const handleAuthResponse = (data, role) => {
-  const tokenValidation = validateJWT(data.token);
-  if (!tokenValidation.valid) {
-    throw new Error(tokenValidation.error);
-  }
-
-  const userData = {
-    ...data.user,
-    role: role || data.user.role,
-    id: tokenValidation.payload.userId
-  };
-
-  if (!userData.email || !userData.id) {
-    throw new Error('Incomplete user data in response');
-  }
-
-  storeAuthData(data.token, userData);
-
-  return {
-    token: data.token,
-    user: userData,
-    path: role
-  };
-};
-
-// Main service functions
-const ownerLogin = async (credentials) => {
-  try {
-    console.debug('Owner login initiated for:', credentials.email);
-    
-    if (!credentials?.email || !credentials?.password) {
-      throw new Error('Email and password are required');
-    }
-
-    const response = await axios.post(`${API_URL}/auth/owner/login`, credentials, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
-    });
-
-    if (!response.headers['content-type']?.includes('application/json')) {
-      throw new Error('Server returned invalid content type');
-    }
-
-    if (!response.data?.token || !response.data?.user) {
-      throw new Error(response.data?.message || 'Invalid server response structure');
-    }
-
-    return handleAuthResponse(response.data, 'owner');
-  } catch (error) {
-    console.error('Owner login failed:', {
-      error: error.message,
-      status: error.response?.status,
-      data: error.response?.data
-    });
-    
-    let message = 'Authentication failed. Please try again.';
-    if (error.response?.data?.message) {
-      message = error.response.data.message;
-    } else if (error.message.includes('Server returned')) {
-      message = 'Server error - please contact support';
-    }
-    
-    clearAuthData();
-    throw new Error(message);
-  }
-};
-
-// Setup interceptors
 const setupInterceptors = () => {
   axios.interceptors.request.use(
     (config) => {
@@ -149,24 +161,23 @@ const setupInterceptors = () => {
 // Initialize interceptors
 setupInterceptors();
 
-// Export all service functions
 const authService = {
-  ownerLogin,
+  validateEmail,
+  verifyStaff,
+  loginStaff,
+  loginOwner,
+  requestPasswordReset,
+  resetPassword,
   verifyToken: (token) => {
-    if (!token) return false;
-    
-    try {
-      const decoded = jwtDecode(token);
-      const currentTime = Date.now() / 1000;
-      
-      return decoded.exp > currentTime;
-    } catch (error) {
-      console.error('Token verification failed:', error);
-      return false;
-    }
+    // Use the validateJWT helper function
+    const result = validateJWT(token);
+    return result.valid;
   },
   clearAuthData,
-  setupInterceptors
+  setupInterceptors,
+  // Export these functions for other components to use
+  validateJWT,
+  storeAuthData
 };
 
 export default authService;

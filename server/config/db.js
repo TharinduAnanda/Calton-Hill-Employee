@@ -1,83 +1,82 @@
 const mysql = require('mysql2/promise');
+const config = require('./config');
 
-// Create connection pool with XAMPP defaults
+// Create the connection pool
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root', // XAMPP default username
-  password: process.env.DB_PASSWORD || '', // XAMPP often has empty password
-  database: process.env.DB_NAME || 'chrms',
-  port: process.env.DB_PORT || 3306, // Explicit port for Windows
+  host: config.db.host,
+  user: config.db.user,
+  password: config.db.password,
+  database: config.db.database,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0,
-  connectTimeout: 10000, // Added timeout for Windows
-  multipleStatements: true // Helpful for some Windows configurations
+  queueLimit: 0
 });
 
-// Enhanced connection test with Windows-specific checks
-const testConnection = async () => {
-  let connection;
-  try {
-    connection = await pool.getConnection();
-    await connection.ping();
-    console.log('✅ Database connection successful');
-    return true;
-  } catch (error) {
-    console.error('❌ Database connection failed:', error.message);
-    
-    // Windows-specific troubleshooting tips
-    if (error.code === 'ECONNREFUSED') {
-      console.log('\nWindows Troubleshooting Tips:');
-      console.log('1. Make sure XAMPP MySQL is running (green "Run" indicator)');
-      console.log('2. In XAMPP, click MySQL "Config" -> "my.ini"');
-      console.log('3. Verify port=3306 under [client] and [mysqld] sections');
-      console.log('4. Try "net start mysql" in Command Prompt as Administrator');
-    }
-    
-    throw error;
-  } finally {
-    if (connection) connection.release();
-  }
-};
-
-// Robust query execution with Windows optimizations
-const executeQuery = async (query, params = []) => {
-  let connection;
-  try {
-    connection = await pool.getConnection();
-    const [rows] = await connection.execute(query, params);
-    return rows;
-  } catch (error) {
-    console.error('❌ Query execution error:', {
-      message: error.message,
-      sql: query,
-      params: params
+/**
+ * Execute a SQL query
+ * @param {string} sql - SQL query to execute
+ * @param {Array} params - Parameters for the SQL query
+ * @returns {Promise<Array>} - Query results
+ */
+function executeQuery(sql, params = []) {
+  return pool.query(sql, params)
+    .then(([rows]) => rows)
+    .catch(error => {
+      console.error('Database error:', error);
+      throw error;
     });
-    
-    // Handle common Windows MySQL errors
-    if (error.code === 'PROTOCOL_CONNECTION_LOST') {
-      console.log('Connection lost - attempting to reconnect...');
-      return executeQuery(query, params); // Retry once
-    }
-    
-    throw error;
-  } finally {
-    if (connection) connection.release();
-  }
-};
+}
+
+/**
+ * Execute a transaction with multiple queries
+ * @param {Function} callback - Function that performs queries within the transaction
+ * @returns {Promise<any>} - Transaction result
+ */
+function executeTransaction(callback) {
+  let connection;
+  
+  return pool.getConnection()
+    .then(conn => {
+      connection = conn;
+      return connection.beginTransaction();
+    })
+    .then(() => {
+      return callback(connection);
+    })
+    .then(result => {
+      return connection.commit()
+        .then(() => {
+          connection.release();
+          return result;
+        });
+    })
+    .catch(error => {
+      if (connection) {
+        return connection.rollback()
+          .then(() => {
+            connection.release();
+            throw error;
+          });
+      }
+      throw error;
+    });
+}
+
+/**
+ * Check database connection
+ * @returns {Promise<boolean>} - Connection status
+ */
+function checkConnection() {
+  return pool.query('SELECT 1')
+    .then(() => true)
+    .catch(error => {
+      console.error('Database connection error:', error);
+      return false;
+    });
+}
 
 module.exports = {
-  pool,
   executeQuery,
-  execute: executeQuery,
-  testConnection,
-  // Added for Windows service management
-  endPool: async () => {
-    try {
-      await pool.end();
-      console.log('MySQL connection pool closed');
-    } catch (error) {
-      console.error('Error closing pool:', error.message);
-    }
-  }
+  executeTransaction,
+  checkConnection
 };

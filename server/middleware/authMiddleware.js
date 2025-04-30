@@ -2,131 +2,89 @@ const jwt = require('jsonwebtoken');
 const config = require('../config/config');
 const { executeQuery } = require('../config/db');
 
-const authMiddleware = {
-  // General protection middleware
-  protect: async (req, res, next) => {
-    try {
-      res.setHeader('Content-Type', 'application/json');
-
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ 
-          success: false,
-          message: 'Not authorized, no token provided'
-        });
-      }
-
-      const token = authHeader.split(' ')[1].trim();
-      
-      if (typeof token !== 'string' || token.split('.').length !== 3) {
-        return res.status(401).json({ 
-          success: false,
-          message: 'Invalid token format' 
-        });
-      }
-
-      const decoded = jwt.verify(token, config.jwt.secret, { 
-        algorithms: ['HS256'],
-        ignoreExpiration: false
-      });
-
-      if (!decoded.userId || !decoded.role) {
-        return res.status(401).json({ 
-          success: false,
-          message: 'Token missing required claims' 
-        });
-      }
-
-      const [owner] = await executeQuery(
-        'SELECT Owner_ID as id, Name, Email, "owner" as role FROM owner WHERE Owner_ID = ?', 
-        [decoded.userId]
-      );
-
-      const [staff] = await executeQuery(
-        'SELECT Staff_ID as id, First_Name, Last_Name, Email, Role as role FROM staff WHERE Staff_ID = ?',
-        [decoded.userId]
-      );
-
-      const user = owner || staff;
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Not authorized, user not found'
-        });
-      }
-
-      req.user = {
-        id: user.id,
-        ...(user.role === 'owner' 
-          ? { name: user.Name, email: user.Email }
-          : { 
-              firstName: user.First_Name, 
-              lastName: user.Last_Name,
-              email: user.Email 
-            }),
-        role: user.role
-      };
-
-      next();
-    } catch (error) {
-      let message = 'Not authorized, token failed';
-      if (error.name === 'TokenExpiredError') {
-        message = 'Session expired, please login again';
-      } else if (error.name === 'JsonWebTokenError') {
-        message = 'Invalid token';
-      }
-
-      res.status(401).json({ 
+/**
+ * Middleware to protect routes by verifying JWT token
+ * 
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next function
+ */
+function protect(req, res, next) {
+  try {
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
         success: false,
-        message
+        message: 'Authentication required'
       });
     }
-  },
-
-  // Owner-specific protection
-  protectOwner: async (req, res, next) => {
-    await authMiddleware.protect(req, res, () => {
-      if (req.user?.role === 'owner') {
-        return next();
-      }
-      res.status(403).json({
-        success: false,
-        message: 'Owner access required'
-      });
-    });
-  },
-
-  // Staff-specific protection
-  protectStaff: async (req, res, next) => {
-    await authMiddleware.protect(req, res, () => {
-      if (req.user?.role === 'staff') {
-        return next();
-      }
-      res.status(403).json({
-        success: false,
-        message: 'Staff access required'
-      });
-    });
-  },
-
-  // Role-based access control
-  requireRole: (...allowedRoles) => {
-    return (req, res, next) => {
-      if (!req.user?.role || !allowedRoles.includes(req.user.role)) {
-        return res.status(403).json({ 
+    
+    const token = authHeader.split(' ')[1];
+    
+    // Verify token
+    jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, decoded) => {
+      if (err) {
+        return res.status(401).json({
           success: false,
-          message: `Requires roles: ${allowedRoles.join(', ')}`
+          message: 'Invalid token',
+          error: process.env.NODE_ENV === 'development' ? err.message : undefined
         });
       }
+      
+      // Add user data to request
+      req.user = decoded;
       next();
-    };
-  },
-
-  // Content-Type validation
-  ensureJson: (req, res, next) => {
-    res.setHeader('Content-Type', 'application/json');
-    next();
+    });
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Authentication error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
-};
+}
 
-module.exports = authMiddleware;
+/**
+ * Middleware to check user role
+ * @param {Array} roles - Array of allowed roles
+ * @returns {Function} Middleware function
+ */
+function requireRole(roles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authenticated'
+      });
+    }
+    
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+    
+    next();
+  };
+}
+
+/**
+ * Middleware to ensure JSON content type
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next function
+ */
+function ensureJson(req, res, next) {
+  res.setHeader('Content-Type', 'application/json');
+  next();
+}
+
+module.exports = {
+  protect,
+  requireRole,
+  ensureJson
+};

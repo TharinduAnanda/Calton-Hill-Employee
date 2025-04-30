@@ -1,448 +1,360 @@
-const StaffModel = require('../models/staffModel');
+const staffModel = require('../models/staffModel');
+const { validateStaffData } = require('../utils/validation');
+const { executeQuery } = require('../config/db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { validationResult } = require('express-validator');
 
-module.exports = {
-  /**
-   * Create new staff (Owner only)
-   */
-  createStaff: async (req, res) => {
-    try {
-      // Validate request
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
+/**
+ * Get all staff members for an owner
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ */
+function getAllStaff(req, res) {
+  const ownerId = req.user.owner_id || req.user.id;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const offset = (page - 1) * limit;
+  
+  staffModel.findAllByOwner(ownerId, limit, offset)
+    .then(result => {
+      res.json({
+        success: true,
+        message: 'Staff retrieved successfully',
+        data: {
+          staff: result.staff,
+          total: result.total
+        },
+        pagination: {
+          page,
+          limit,
+          total: result.total,
+          pages: Math.ceil(result.total / limit)
+        }
+      });
+    })
+    .catch(error => {
+      console.error('Error getting staff:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve staff list',
+        error: error.message
+      });
+    });
+}
+
+/**
+ * Get a specific staff member by ID
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ */
+function getStaffById(req, res) {
+  const { staffId } = req.params;
+  const ownerId = req.user.owner_id || req.user.id;
+  
+  // First check if staff belongs to this owner
+  executeQuery(
+    'SELECT owner_id FROM staff WHERE staff_id = ?',
+    [staffId]
+  )
+    .then(results => {
+      if (results.length === 0) {
+        return res.status(404).json({
           success: false,
-          message: 'Validation errors',
-          errors: errors.array()
+          message: 'Staff not found'
         });
       }
-
-      // Authorization check
-      if (req.user.role !== 'owner') {
+      
+      if (results[0].owner_id !== ownerId) {
         return res.status(403).json({
           success: false,
-          message: 'Forbidden: Only owners can create staff'
+          message: 'Access denied'
         });
       }
-
-      const { 
-        first_name, 
-        last_name, 
-        email, 
-        password, 
-        phone_number, 
-        address, 
-        age, 
-        gender, 
-        role = 'staff' 
-      } = req.body;
-
-      // Check for existing staff
-      const existingStaff = await StaffModel.findByEmail(email);
-      if (existingStaff) {
-        return res.status(409).json({
+      
+      // Now get the staff details
+      return staffModel.findById(staffId);
+    })
+    .then(staff => {
+      if (!staff) {
+        return res.status(404).json({
           success: false,
-          message: 'Staff with this email already exists'
+          message: 'Staff not found'
         });
       }
-
-      // Hash password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-
-      // Create staff
-      const staffId = await StaffModel.createStaff({
-        first_name,
-        last_name,
-        email,
-        password: hashedPassword,
-        phone_number,
-        address,
-        age,
-        gender,
-        role: role.toLowerCase(),
-        owner_id: req.user.id
+      
+      res.json({
+        success: true,
+        data: staff
       });
+    })
+    .catch(error => {
+      console.error('Error getting staff:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve staff details',
+        error: error.message
+      });
+    });
+}
 
+/**
+ * Create a new staff member
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ */
+function createStaff(req, res) {
+  // Verify the current user is an owner
+  if (req.user.role !== 'owner') {
+    return res.status(403).json({
+      success: false,
+      message: 'Only owners can create staff accounts'
+    });
+  }
+  
+  // Validate input
+  const { valid, errors } = validateStaffData(req.body);
+  if (!valid) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors
+    });
+  }
+  
+  // Prepare staff data
+  const staffData = {
+    ...req.body,
+    owner_id: req.user.id || req.user.userId
+  };
+  
+  // Create staff member
+  staffModel.createStaff(staffData)
+    .then(staffId => {
+      return staffModel.findById(staffId);
+    })
+    .then(newStaff => {
       res.status(201).json({
         success: true,
         message: 'Staff created successfully',
-        data: { 
-          id: staffId,
-          first_name,
-          last_name,
-          email,
-          role
-        }
+        data: newStaff
       });
-
-    } catch (error) {
-      console.error('Staff creation error:', error);
-      res.status(500).json({
+    })
+    .catch(error => {
+      console.error('Error creating staff:', error);
+      res.status(error.message === 'Email already exists' ? 409 : 500).json({
         success: false,
-        message: 'Internal server error',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: error.message || 'Failed to create staff'
       });
-    }
-  },
+    });
+}
 
-  /**
-   * Staff login
-   */
-  loginStaff: async (req, res) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Validation errors',
-          errors: errors.array()
-        });
-      }
-
-      const { email, password } = req.body;
-
-      const staff = await StaffModel.findByEmail(email);
-      if (!staff) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials'
-        });
-      }
-
-      const isMatch = await bcrypt.compare(password, staff.password);
-      if (!isMatch) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials'
-        });
-      }
-
-      // Create JWT token
-      const token = jwt.sign(
-        {
-          id: staff.id,
-          role: 'staff',
-          email: staff.email,
-          name: `${staff.first_name} ${staff.last_name}`,
-          owner_id: staff.owner_id,
-          staff_role: staff.role
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: '8h' }
-      );
-
-      // Remove sensitive data before sending response
-      const { password: _, ...staffData } = staff;
-
-      res.json({
-        success: true,
-        message: 'Login successful',
-        data: {
-          token,
-          staff: staffData
-        }
-      });
-
-    } catch (error) {
-      console.error('Login error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  },
-
-  /**
-   * Get all staff (Owner only) with pagination
-   */
-  getAllStaff: async (req, res) => {
-    try {
-      // Verify owner authentication
-      if (req.user.role !== 'owner') {
-        return res.status(403).json({
-          success: false,
-          message: 'Forbidden: Only owners can access this resource'
-        });
-      }
-
-      const { page = 1, limit = 10 } = req.query;
-      const offset = (page - 1) * limit;
-
-      const { staff, total } = await StaffModel.findAllByOwner(
-        req.user.id, 
-        parseInt(limit), 
-        parseInt(offset)
-      );
-      
-      if (!staff || staff.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'No staff found for this owner'
-        });
-      }
-
-      // Remove sensitive data
-      const sanitizedStaff = staff.map(member => {
-        const { password, ...rest } = member;
-        return rest;
-      });
-
-      res.json({
-        success: true,
-        data: sanitizedStaff,
-        pagination: {
-          total,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(total / limit)
-        }
-      });
-
-    } catch (error) {
-      console.error('Error fetching staff:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to fetch staff',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  },
-
-  /**
-   * Get staff by ID
-   */
-  getStaffById: async (req, res) => {
-    try {
-      const staffId = req.params.id;
-      const staff = await StaffModel.findById(staffId);
-
-      if (!staff) {
+/**
+ * Update an existing staff member
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ */
+function updateStaff(req, res) {
+  const { staffId } = req.params;
+  const ownerId = req.user.owner_id || req.user.id;
+  
+  // Validate input
+  const { valid, errors } = validateStaffData(req.body, true);
+  if (!valid) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors
+    });
+  }
+  
+  // First check if staff belongs to this owner
+  executeQuery(
+    'SELECT owner_id FROM staff WHERE staff_id = ?',
+    [staffId]
+  )
+    .then(results => {
+      if (results.length === 0) {
         return res.status(404).json({
           success: false,
           message: 'Staff not found'
         });
       }
-
-      // Authorization check
-      if (req.user.role === 'owner' && staff.owner_id !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          message: 'Forbidden: Not your staff member'
-        });
-      }
-
-      if (req.user.role === 'staff' && staff.id !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          message: 'Forbidden: Can only view own profile'
-        });
-      }
-
-      // Remove sensitive data
-      const { password, ...staffData } = staff;
-
-      res.json({
-        success: true,
-        data: staffData
-      });
-
-    } catch (error) {
-      console.error('Get staff error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  },
-
-  /**
-   * Update staff profile
-   */
-  updateStaff: async (req, res) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Validation errors',
-          errors: errors.array()
-        });
-      }
-
-      const staffId = req.params.id;
-      const staff = await StaffModel.findById(staffId);
-
-      if (!staff) {
-        return res.status(404).json({
-          success: false,
-          message: 'Staff not found'
-        });
-      }
-
-      // Authorization check
-      if (req.user.role === 'owner' && staff.owner_id !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          message: 'Forbidden: Not your staff member'
-        });
-      }
-
-      if (req.user.role === 'staff' && staff.id !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          message: 'Forbidden: Can only update own profile'
-        });
-      }
-
-      // Staff can't update their role
-      if (req.user.role === 'staff' && req.body.role) {
-        delete req.body.role;
-      }
-
-      // Hash password if provided
-      if (req.body.password) {
-        const salt = await bcrypt.genSalt(10);
-        req.body.password = await bcrypt.hash(req.body.password, salt);
-      }
-
-      const result = await StaffModel.updateStaff(staffId, req.body);
       
-      if (result === 0) {
-        return res.status(400).json({
+      if (results[0].owner_id !== ownerId && req.user.role !== 'owner') {
+        return res.status(403).json({
           success: false,
-          message: 'No changes made'
+          message: 'Access denied'
         });
       }
-
-      const updatedStaff = await StaffModel.findById(staffId);
-      const { password, ...staffData } = updatedStaff;
-
+      
+      // Update the staff
+      return staffModel.updateStaff(staffId, req.body);
+    })
+    .then(() => {
+      return staffModel.findById(staffId);
+    })
+    .then(updatedStaff => {
       res.json({
         success: true,
         message: 'Staff updated successfully',
-        data: staffData
+        data: updatedStaff
       });
-
-    } catch (error) {
-      console.error('Update staff error:', error);
+    })
+    .catch(error => {
+      console.error('Error updating staff:', error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: error.message || 'Failed to update staff'
       });
-    }
-  },
+    });
+}
 
-  /**
-   * Delete staff (Owner only)
-   */
-  deleteStaff: async (req, res) => {
-    try {
-      if (req.user.role !== 'owner') {
-        return res.status(403).json({
-          success: false,
-          message: 'Forbidden: Only owners can delete staff'
-        });
-      }
-
-      const staffId = req.params.id;
-      const staff = await StaffModel.findById(staffId);
-
-      if (!staff) {
+/**
+ * Delete a staff member
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ */
+function deleteStaff(req, res) {
+  const { staffId } = req.params;
+  const ownerId = req.user.owner_id || req.user.id;
+  
+  // First check if staff belongs to this owner
+  executeQuery(
+    'SELECT owner_id FROM staff WHERE staff_id = ?',
+    [staffId]
+  )
+    .then(results => {
+      if (results.length === 0) {
         return res.status(404).json({
           success: false,
           message: 'Staff not found'
         });
       }
-
-      if (staff.owner_id !== req.user.id) {
+      
+      if (results[0].owner_id !== ownerId && req.user.role !== 'owner') {
         return res.status(403).json({
           success: false,
-          message: 'Forbidden: Not your staff member'
+          message: 'Access denied'
         });
       }
-
-      const result = await StaffModel.deleteStaff(staffId);
       
-      if (result === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Failed to delete staff'
-        });
-      }
-
+      // Delete the staff
+      return staffModel.deleteStaff(staffId);
+    })
+    .then(() => {
       res.json({
         success: true,
         message: 'Staff deleted successfully'
       });
-
-    } catch (error) {
-      console.error('Delete staff error:', error);
+    })
+    .catch(error => {
+      console.error('Error deleting staff:', error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: error.message || 'Failed to delete staff'
       });
+    });
+}
+
+/**
+ * Staff self-update (can only update certain fields)
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ */
+function updateSelfProfile(req, res) {
+  const staffId = req.user.id;
+  
+  // Staff can only update certain fields
+  const allowedFields = ['phone_number', 'address'];
+  const updates = {};
+  
+  // Filter allowed fields
+  allowedFields.forEach(field => {
+    if (req.body[field] !== undefined) {
+      updates[field] = req.body[field];
     }
-  },
-
-  /**
-   * Change staff password
-   */
-  changePassword: async (req, res) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Validation errors',
-          errors: errors.array()
+  });
+  
+  // Handle password update separately
+  if (req.body.password && req.body.currentPassword) {
+    // Verify current password first
+    staffModel.findByEmail(req.user.email)
+      .then(staff => {
+        if (!staff) {
+          return res.status(404).json({
+            success: false,
+            message: 'Staff not found'
+          });
+        }
+        
+        return bcrypt.compare(req.body.currentPassword, staff.password);
+      })
+      .then(isMatch => {
+        if (!isMatch) {
+          return res.status(401).json({
+            success: false,
+            message: 'Current password is incorrect'
+          });
+        }
+        
+        // Current password is correct, update password
+        updates.password = req.body.password;
+        
+        // Update the staff
+        return staffModel.updateStaff(staffId, updates);
+      })
+      .then(() => {
+        return staffModel.findById(staffId);
+      })
+      .then(updatedStaff => {
+        res.json({
+          success: true,
+          message: 'Profile updated successfully',
+          data: updatedStaff
         });
-      }
-
-      const staffId = req.params.id;
-      const { currentPassword, newPassword } = req.body;
-
-      const staff = await StaffModel.findById(staffId);
-      if (!staff) {
-        return res.status(404).json({
+      })
+      .catch(error => {
+        console.error('Error updating staff profile:', error);
+        res.status(500).json({
           success: false,
-          message: 'Staff not found'
+          message: error.message || 'Failed to update profile'
         });
-      }
-
-      // Verify current password
-      const isMatch = await bcrypt.compare(currentPassword, staff.password);
-      if (!isMatch) {
-        return res.status(401).json({
-          success: false,
-          message: 'Current password is incorrect'
-        });
-      }
-
-      // Hash new password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-      await StaffModel.updateStaff(staffId, { password: hashedPassword });
-
-      res.json({
-        success: true,
-        message: 'Password changed successfully'
       });
-
-    } catch (error) {
-      console.error('Change password error:', error);
-      res.status(500).json({
+  } else {
+    // Regular update without password
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
         success: false,
-        message: 'Failed to change password',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: 'No valid fields to update'
       });
     }
+    
+    staffModel.updateStaff(staffId, updates)
+      .then(() => {
+        return staffModel.findById(staffId);
+      })
+      .then(updatedStaff => {
+        res.json({
+          success: true,
+          message: 'Profile updated successfully',
+          data: updatedStaff
+        });
+      })
+      .catch(error => {
+        console.error('Error updating staff profile:', error);
+        res.status(500).json({
+          success: false,
+          message: error.message || 'Failed to update profile'
+        });
+      });
   }
+}
+
+module.exports = {
+  getAllStaff,
+  getStaffById,
+  createStaff,
+  updateStaff,
+  deleteStaff,
+  updateSelfProfile
 };

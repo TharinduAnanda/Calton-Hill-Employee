@@ -1,8 +1,8 @@
-import React from 'react';
 import UserTypeSelection from './pages/Auth/UserTypeSelection';
 import OwnerLogin from './pages/Auth/OwnerLogin';
 import StaffLogin from './pages/Auth/StaffLogin';
-import Dashboard from './pages/Dashboard/Dashboard';
+import StaffDashboard from './pages/Staff/StaffDashboard';
+import OwnerDashboardPage from './pages/Owner/OwnerDashboardPage';
 import ProductList from './pages/Products/ProductList';
 import ProductDetails from './pages/Products/ProductDetails';
 import InventoryList from './pages/Inventory/InventoryList';
@@ -13,187 +13,176 @@ import SupplierDetail from './pages/Suppliers/SupplierDetail';
 import OrderList from './pages/Orders/OrderList';
 import OrderDetail from './pages/Orders/OrderDetail';
 import ForgotPassword from './pages/Auth/ForgotPassword';
-import OwnerDashboardPage from './pages/Owner/OwnerDashboardPage';
-import StaffManagement from './pages/Owner/StaffManagement';
 import StoreSettings from './pages/Owner/StoreSettings';
 import OwnerAccountSettings from './pages/Owner/OwnerAccountSettings';
-import StaffDashboard from './pages/Staff/StaffDashboard';
-import ProductForm from './pages/Products/ProductForm';
-import SupplierForm from './pages/Suppliers/SupplierForm';
-import CreateOrderForm from './pages/Orders/CreateOrderForm';
+import StaffManagement from './pages/Staff/StaffManagement';
 
-// Error components
-const NotFound = () => (
-  <div className="error-page">
-    <h1>404 - Page Not Found</h1>
-    <p>The page you are looking for does not exist.</p>
-  </div>
-);
+// Import the error components that already exist in your project
+import NotFound from './components/common/NotFound';
+import Unauthorized from './components/common/Unauthorized';
 
-const Unauthorized = () => (
-  <div className="error-page">
-    <h1>403 - Unauthorized</h1>
-    <p>You don't have permission to access this page.</p>
-  </div>
-);
-
-// Route configuration
-const routeConfig = {
-  public: [
-    {
-      path: '/',
-      component: UserTypeSelection,
-      exact: true
-    },
-    {
-      path: '/owner-login',
-      component: OwnerLogin
-    },
-    {
-      path: '/staff-login',
-      component: StaffLogin
-    },
-    {
-      path: '/forgot-password',
-      component: ForgotPassword
-    }
-  ],
-  
-  owner: [
-    {
-      path: '/owner/dashboard',
-      component: OwnerDashboardPage,
-      exact: true,
-      allowedRoles: ['owner']
-    },
-    {
-      path: '/staff',
-      component: StaffManagement,
-      protected: true,
-      allowedRoles: ['owner'],
-      exact: true
-    },
-    {
-      path: '/owner/settings',
-      component: StoreSettings,
-      allowedRoles: ['owner']
-    },
-    {
-      path: '/owner/account',
-      component: OwnerAccountSettings,
-      allowedRoles: ['owner']
-    }
-  ],
-  
-  staff: [
-    {
-      path: '/staff/dashboard',
-      component: StaffDashboard,
-      exact: true,
-      allowedRoles: ['staff', 'manager']
-    },
-    {
-      path: '/manager/dashboard',
-      component: StaffDashboard,
-      allowedRoles: ['manager']
-    }
-  ],
-  
-  shared: [
-    {
-      path: '/dashboard',
-      component: Dashboard,
-      allowedRoles: ['owner', 'manager', 'staff']
-    },
-    {
-      path: '/products',
-      component: ProductList,
-      exact: true,
-      allowedRoles: ['owner', 'manager', 'staff']
-    },
-    {
-      path: '/products/add',
-      component: ProductForm,
-      allowedRoles: ['owner', 'manager']
-    },
-    {
-      path: '/products/:id',
-      component: ProductDetails,
-      allowedRoles: ['owner', 'manager', 'staff']
-    },
-    {
-      path: '/inventory',
-      component: InventoryList,
-      exact: true,
-      allowedRoles: ['owner', 'manager', 'staff']
-    },
-    {
-      path: '/inventory/add',
-      component: AddInventoryItem,
-      allowedRoles: ['owner', 'manager']
-    },
-    {
-      path: '/inventory/:id',
-      component: InventoryItem,
-      allowedRoles: ['owner', 'manager', 'staff']
-    },
-    {
-      path: '/suppliers',
-      component: SupplierList,
-      exact: true,
-      allowedRoles: ['owner', 'manager']
-    },
-    {
-      path: '/suppliers/add',
-      component: SupplierForm,
-      allowedRoles: ['owner', 'manager']
-    },
-    {
-      path: '/suppliers/:id',
-      component: SupplierDetail,
-      allowedRoles: ['owner', 'manager']
-    },
-    {
-      path: '/orders',
-      component: OrderList,
-      exact: true,
-      allowedRoles: ['owner', 'manager', 'staff']
-    },
-    {
-      path: '/orders/create',
-      component: CreateOrderForm,
-      allowedRoles: ['owner', 'manager', 'staff']
-    },
-    {
-      path: '/orders/:id',
-      component: OrderDetail,
-      allowedRoles: ['owner', 'manager', 'staff']
-    }
-  ],
-  
-  errors: [
-    {
-      path: '/unauthorized',
-      component: Unauthorized
-    },
-    {
-      path: '*',
-      component: NotFound
-    }
-  ]
-};
-
-// Combine all routes
+/**
+ * Routes configuration object
+ * Each route defines a path, component, and permissions
+ */
 const routes = [
-  ...routeConfig.public,
-  ...routeConfig.owner,
-  ...routeConfig.staff,
-  ...routeConfig.shared,
-  ...routeConfig.errors
-].map(route => ({
-  ...route,
-  protected: route.allowedRoles !== undefined,
-  exact: route.exact || false
-}));
+  // Auth routes
+  {
+    path: '/',
+    component: UserTypeSelection,
+    exact: true,
+    protected: false
+  },
+  {
+    path: '/owner-login',
+    component: OwnerLogin,
+    exact: true,
+    protected: false
+  },
+  {
+    path: '/staff-login',
+    component: StaffLogin,
+    exact: true,
+    protected: false
+  },
+  {
+    path: '/forgot-password',
+    component: ForgotPassword,
+    exact: true,
+    protected: false
+  },
+  
+  // Dashboard routes
+  {
+    path: '/dashboard',
+    component: null, // This will be handled by the DashboardRedirect component
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager', 'staff']
+  },
+  {
+    path: '/owner/dashboard',
+    component: OwnerDashboardPage,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner']
+  },
+  {
+    path: '/staff/dashboard',
+    component: StaffDashboard,
+    exact: true, 
+    protected: true,
+    allowedRoles: ['manager', 'staff']
+  },
+  
+  // Staff management routes
+  {
+    path: '/staff/management',
+    component: StaffManagement,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager']
+  },
+  
+  // Inventory routes
+  {
+    path: '/inventory',
+    component: InventoryList,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager', 'staff']
+  },
+  {
+    path: '/inventory/add',
+    component: AddInventoryItem,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager']
+  },
+  {
+    path: '/inventory/:id',
+    component: InventoryItem,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager', 'staff']
+  },
+  
+  // Product routes
+  {
+    path: '/products',
+    component: ProductList,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager', 'staff']
+  },
+  {
+    path: '/products/:id',
+    component: ProductDetails,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager', 'staff']
+  },
+  
+  // Supplier routes
+  {
+    path: '/suppliers',
+    component: SupplierList,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager']
+  },
+  {
+    path: '/suppliers/:id',
+    component: SupplierDetail,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager']
+  },
+  
+  // Order routes
+  {
+    path: '/orders',
+    component: OrderList,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager', 'staff']
+  },
+  {
+    path: '/orders/:id',
+    component: OrderDetail,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager', 'staff']
+  },
+  
+  // Settings routes
+  {
+    path: '/settings',
+    component: StoreSettings,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner']
+  },
+  {
+    path: '/account-settings',
+    component: OwnerAccountSettings,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner']
+  },
+  
+  // Error routes
+  {
+    path: '/unauthorized',
+    component: Unauthorized,
+    exact: true,
+    protected: false
+  },
+  {
+    path: '*',
+    component: NotFound,
+    protected: false
+  }
+];
 
 export default routes;

@@ -2,94 +2,99 @@
 import axios from 'axios';
 
 // Define the base URL for the API
-const API_URL = '/api';
+const API_URL = '/api/customers';
+
+/**
+ * Handle API errors consistently
+ * @param {Error} error - The error object
+ * @param {string} defaultMessage - Default message
+ * @throws {Error} Formatted error
+ */
+function handleApiError(error, defaultMessage) {
+  console.error('Customer API Error:', error);
+  throw error.response?.data || { message: defaultMessage };
+}
 
 /**
  * Get all customers
- * @returns {Promise} Promise object that resolves to the response data
+ * @returns {Promise<Object>} Response data
  */
-export const getAllCustomers = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/customers`);
-    return response;
-  } catch (error) {
-    console.error('Error fetching customers:', error);
-    throw error;
-  }
-};
+function getAllCustomers() {
+  return axios.get(API_URL)
+    .then(response => response)
+    .catch(error => {
+      return handleApiError(error, 'Failed to fetch customers');
+    });
+}
 
 /**
  * Get a customer by ID
  * @param {string} id - Customer ID
- * @returns {Promise} Promise object that resolves to the response data
+ * @returns {Promise<Object>} Response data
  */
-export const getCustomerById = async (id) => {
-  try {
-    const response = await axios.get(`${API_URL}/customers/${id}`);
-    return response;
-  } catch (error) {
-    console.error(`Error fetching customer with id ${id}:`, error);
-    throw error;
-  }
-};
+function getCustomerById(id) {
+  return axios.get(`${API_URL}/${id}`)
+    .then(response => response)
+    .catch(error => {
+      return handleApiError(error, `Failed to fetch customer with id ${id}`);
+    });
+}
 
 /**
  * Create a new customer
  * @param {Object} customerData - Customer data
- * @returns {Promise} Promise object that resolves to the response data
+ * @returns {Promise<Object>} Response data
  */
-export const createCustomer = async (customerData) => {
-  try {
-    const response = await axios.post(`${API_URL}/customers`, customerData);
-    return response;
-  } catch (error) {
-    console.error('Error creating customer:', error);
-    throw error;
-  }
-};
+function createCustomer(customerData) {
+  return axios.post(API_URL, customerData)
+    .then(response => response.data)
+    .catch(error => {
+      return handleApiError(error, 'Failed to create customer');
+    });
+}
 
 /**
- * Update a customer
+ * Update an existing customer
  * @param {string} id - Customer ID
- * @param {Object} customerData - Updated customer data
- * @returns {Promise} Promise object that resolves to the response data
+ * @param {Object} customerData - Customer data
+ * @returns {Promise<Object>} Response data
  */
-export const updateCustomer = async (id, customerData) => {
-  try {
-    const response = await axios.put(`${API_URL}/customers/${id}`, customerData);
-    return response;
-  } catch (error) {
-    console.error(`Error updating customer with id ${id}:`, error);
-    throw error;
-  }
-};
+function updateCustomer(id, customerData) {
+  return axios.put(`${API_URL}/${id}`, customerData)
+    .then(response => response.data)
+    .catch(error => {
+      return handleApiError(error, 'Failed to update customer');
+    });
+}
 
 /**
  * Delete a customer
  * @param {string} id - Customer ID
- * @returns {Promise} Promise object that resolves to the response data
+ * @returns {Promise<Object>} Response data
  */
-export const deleteCustomer = async (id) => {
-  try {
-    const response = await axios.delete(`${API_URL}/customers/${id}`);
-    return response;
-  } catch (error) {
-    console.error(`Error deleting customer with id ${id}:`, error);
-    throw error;
-  }
+function deleteCustomer(id) {
+  return axios.delete(`${API_URL}/${id}`)
+    .then(response => response.data)
+    .catch(error => {
+      return handleApiError(error, 'Failed to delete customer');
+    });
+}
+
+// Create a named service object
+const customerService = {
+  getAllCustomers,
+  getCustomerById,
+  createCustomer,
+  updateCustomer,
+  deleteCustomer
 };
 
-/**
- * Get customer orders
- * @param {string} id - Customer ID
- * @returns {Promise} Promise object that resolves to the response data
- */
-export const getCustomerOrders = async (id) => {
-  try {
-    const response = await axios.get(`${API_URL}/customers/${id}/orders`);
-    return response;
-  } catch (error) {
-    console.error(`Error fetching orders for customer with id ${id}:`, error);
-    throw error;
-  }
+export {
+  getAllCustomers,
+  getCustomerById,
+  createCustomer,
+  updateCustomer,
+  deleteCustomer
 };
+
+export default customerService;
