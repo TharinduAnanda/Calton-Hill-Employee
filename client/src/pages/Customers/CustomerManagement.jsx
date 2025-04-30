@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Box, Typography, Paper, Button, TextField, 
   Table, TableBody, TableCell, TableContainer, 
@@ -29,29 +29,60 @@ const CustomerManagement = () => {
   
   // Fetch customers on initial load
   useEffect(() => {
+    const fetchCustomers = async () => {
+  try {
+    setLoading(true);
+    const response = await customerService.getAllCustomers({
+      page: page + 1, // API uses 1-based pagination
+      limit: rowsPerPage,
+      search: searchTerm
+    });
+    
+    if (response.success) {
+      setCustomers(response.customers);
+      setTotalCustomers(response.pagination.total);
+      setError(null);
+    } else {
+      console.error('Error fetching customers:', response.error);
+      setError(response.error.message || 'Failed to load customers');
+    }
+  } catch (err) {
+    console.error('Error fetching customers:', err);
+    setError('Failed to load customers. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+
     fetchCustomers();
   }, [page, rowsPerPage, searchTerm]);
   
-  const fetchCustomers = async () => {
-    try {
-      setLoading(true);
-      const response = await customerService.getAllCustomers({
-        page: page + 1, // API uses 1-based pagination
-        limit: rowsPerPage,
-        search: searchTerm
-      });
-      
-      setCustomers(response.data.data);
-      setTotalCustomers(response.data.pagination.total);
+  // Add this function outside the useEffect
+  const refreshCustomerList = async () => {
+  try {
+    setLoading(true);
+    const response = await customerService.getAllCustomers({
+      page: page + 1,
+      limit: rowsPerPage,
+      search: searchTerm
+    });
+    
+    if (response.success) {
+      setCustomers(response.customers);
+      setTotalCustomers(response.pagination.total);
       setError(null);
-    } catch (err) {
-      console.error('Error fetching customers:', err);
-      setError('Failed to load customers. Please try again.');
-    } finally {
-      setLoading(false);
+    } else {
+      console.error('Error refreshing customers:', response.error);
+      setError(response.error.message || 'Failed to refresh customers');
     }
-  };
-  
+  } catch (err) {
+    console.error('Error refreshing customers:', err);
+    setError('Failed to refresh customers. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -71,15 +102,16 @@ const CustomerManagement = () => {
     setViewMode('details');
   };
   
-  const handleAddCustomer = () => {
-    setViewMode('add');
-  };
+  // const handleAddCustomer = () => {
+  //   setViewMode('add');
+  // };
   
+  // Then update the handleBackToList function
   const handleBackToList = () => {
     setViewMode('list');
     setSelectedCustomer(null);
     // Refresh customer list
-    fetchCustomers();
+    refreshCustomerList();
   };
   
   // Render customer details view

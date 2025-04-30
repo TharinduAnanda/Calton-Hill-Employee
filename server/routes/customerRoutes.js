@@ -30,7 +30,7 @@ router.patch('/support/tickets/:id/status', [
   body('status').notEmpty().withMessage('Status is required')
 ], customerController.updateTicketStatus);
 
-// Put more specific routes before generic ones with parameters
+// Customer CRUD operations
 router.get('/:id', customerController.getCustomerDetails);
 router.patch('/:id', [
   body('email').optional().isEmail().withMessage('Valid email is required')

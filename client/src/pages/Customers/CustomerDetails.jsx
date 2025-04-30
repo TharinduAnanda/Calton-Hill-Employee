@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import instance from '../../utils/axiosConfig'; // Use your configured axios instance
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Box,
@@ -88,40 +89,40 @@ const CustomerDetails = ({ id: customerId, isEmbedded = false }) => {
   }, [id]);
 
   const fetchCustomerDetails = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`/api/customers/${id}`);
-      setCustomer(response.data.data);
-      
-      // Set edit data
-      const customerData = response.data.data.customer;
-      setEditData({
-        name: customerData.name || '',
-        email: customerData.email || '',
-        phone: customerData.phone || '',
-        address: customerData.address || '',
-        customer_segment: customerData.customer_segment || '',
-        loyalty_points: customerData.loyalty_points || 0,
-        notes: customerData.notes || '',
-        marketing_consent: Boolean(customerData.marketing_consent)
-      });
-      
-      setLoading(false);
-    } catch (err) {
-      setError('Failed to fetch customer details. Please try again.');
-      setLoading(false);
-      console.error('Error fetching customer details:', err);
-    }
-  };
+  try {
+    setLoading(true);
+    const response = await instance.get(`/api/customers/${id}`); // Use instance instead of axios
+    setCustomer(response.data.data);
+    
+    // Set edit data
+    const customerData = response.data.data.customer;
+    setEditData({
+      name: customerData.name || '',
+      email: customerData.email || '',
+      phone: customerData.phone || '',
+      address: customerData.address || '',
+      customer_segment: customerData.customer_segment || '',
+      loyalty_points: customerData.loyalty_points || 0,
+      notes: customerData.notes || '',
+      marketing_consent: Boolean(customerData.marketing_consent)
+    });
+    
+    setLoading(false);
+  } catch (err) {
+    setError('Failed to fetch customer details. Please try again.');
+    setLoading(false);
+    console.error('Error fetching customer details:', err);
+  }
+};
 
   const fetchCustomerSegments = async () => {
-    try {
-      const response = await axios.get('/api/customers/segments/all');
-      setSegments(response.data.data || []);
-    } catch (err) {
-      console.error('Error fetching customer segments:', err);
-    }
-  };
+  try {
+    const response = await instance.get('/api/customers/segments/all'); // Use instance
+    setSegments(response.data.data || []);
+  } catch (err) {
+    console.error('Error fetching customer segments:', err);
+  }
+};
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -144,15 +145,15 @@ const CustomerDetails = ({ id: customerId, isEmbedded = false }) => {
   };
   
   const handleUpdateCustomer = async () => {
-    try {
-      await axios.patch(`/api/customers/${id}`, editData);
-      handleCloseEditDialog();
-      fetchCustomerDetails(); // Refresh data
-    } catch (err) {
-      console.error('Error updating customer:', err);
-      alert('Failed to update customer information.');
-    }
-  };
+  try {
+    await instance.patch(`/api/customers/${id}`, editData); // Use instance
+    handleCloseEditDialog();
+    fetchCustomerDetails(); // Refresh data
+  } catch (err) {
+    console.error('Error updating customer:', err);
+    alert('Failed to update customer information.');
+  }
+};
   
   const handleOpenNewTicketDialog = () => {
     setOpenNewTicketDialog(true);
@@ -177,36 +178,36 @@ const CustomerDetails = ({ id: customerId, isEmbedded = false }) => {
   };
   
   const handleCreateTicket = async () => {
-    try {
-      if (!newTicket.subject || !newTicket.description) {
-        alert('Subject and description are required.');
-        return;
-      }
-      
-      const ticketData = {
-        customer_id: id,
-        subject: newTicket.subject,
-        description: newTicket.description,
-        priority: newTicket.priority
-      };
-      
-      if (newTicket.order_id) {
-        ticketData.order_id = newTicket.order_id;
-      }
-      
-      await axios.post('/api/customers/support/tickets', ticketData);
-      handleCloseNewTicketDialog();
-      
-      // If we're on the tickets tab, refresh the tickets
-      if (tabValue === 2) {
-        fetchCustomerDetails();
-      }
-      
-    } catch (err) {
-      console.error('Error creating support ticket:', err);
-      alert('Failed to create support ticket.');
+  try {
+    if (!newTicket.subject || !newTicket.description) {
+      alert('Subject and description are required.');
+      return;
     }
-  };
+    
+    const ticketData = {
+      customer_id: id,
+      subject: newTicket.subject,
+      description: newTicket.description,
+      priority: newTicket.priority
+    };
+    
+    if (newTicket.order_id) {
+      ticketData.order_id = newTicket.order_id;
+    }
+    
+    await instance.post('/api/customers/support/tickets', ticketData); // Use instance
+    handleCloseNewTicketDialog();
+    
+    // If we're on the tickets tab, refresh the tickets
+    if (tabValue === 2) {
+      fetchCustomerDetails();
+    }
+    
+  } catch (err) {
+    console.error('Error creating support ticket:', err);
+    alert('Failed to create support ticket.');
+  }
+};
 
   if (loading) {
     return (
@@ -256,7 +257,7 @@ const CustomerDetails = ({ id: customerId, isEmbedded = false }) => {
             <CardContent>
               <Box display="flex" justifyContent="center" mb={2}>
                 <Avatar sx={{ width: 80, height: 80, bgcolor: 'primary.main' }}>
-                  {customerData.name.charAt(0)}
+                {customerData?.name?.charAt(0) || <PersonIcon />}
                 </Avatar>
               </Box>
               <Typography variant="h5" align="center" gutterBottom>{customerData.name}</Typography>

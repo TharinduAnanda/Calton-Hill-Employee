@@ -1,53 +1,80 @@
-// src/services/customerService.js
-import axios from 'axios';
+import instance from '../utils/axiosConfig';
 
-// Define the base URL for the API
+// Define the base API URL - will be combined with baseURL from axiosConfig
 const API_URL = '/api/customers';
 
 /**
  * Handle API errors consistently
  * @param {Error} error - The error object
- * @param {string} defaultMessage - Default message
+ * @param {string} defaultMessage - Default error message
  * @throws {Error} Formatted error
  */
-function handleApiError(error, defaultMessage) {
+function handleApiError(error, defaultMessage = 'An error occurred') {
   console.error('Customer API Error:', error);
-  throw error.response?.data || { message: defaultMessage };
+  throw new Error(
+    error.response?.data?.message || error.message || defaultMessage
+  );
 }
 
 /**
  * Get all customers with pagination and search
- * @param {Object} options - Query options
- * @param {number} options.page - Page number
- * @param {number} options.limit - Items per page
- * @param {string} options.search - Search term
+ * @param {Object} options - Query parameters
  * @returns {Promise<Object>} Response data
  */
-function getAllCustomers(options = {}) {
-  const { page = 1, limit = 10, search = '', segment = '' } = options;
-  
-  let url = `${API_URL}?page=${page}&limit=${limit}`;
-  if (search) url += `&search=${encodeURIComponent(search)}`;
-  if (segment) url += `&segment=${encodeURIComponent(segment)}`;
-  
-  return axios.get(url)
-    .then(response => response)
-    .catch(error => {
-      return handleApiError(error, 'Failed to fetch customers');
+async function getAllCustomers(options = {}) {
+  try {
+    const response = await instance.get(API_URL, { 
+      params: {
+        page: options.page || 1,
+        limit: options.limit || 10,
+        search: options.search || '',
+        segment: options.segment || ''
+      }
     });
+    
+    console.log('Customer data received:', response.data);
+    
+    // Return the data in a consistent structure
+    return {
+      success: true,
+      customers: response.data.data,
+      pagination: response.data.pagination,
+      total: response.data.pagination?.total || response.data.data?.length || 0
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: handleApiError(error, 'Failed to fetch customers')
+    };
+  }
+}
+
+
+/**
+ * Get a specific customer by ID
+ * @param {number|string} id - Customer ID
+ * @returns {Promise<Object>} Response data
+ */
+async function getCustomerById(id) {
+  try {
+    const response = await instance.get(`${API_URL}/${id}`);
+    return response.data;
+  } catch (error) {
+    return handleApiError(error, `Failed to fetch customer #${id}`);
+  }
 }
 
 /**
- * Get a customer by ID
- * @param {string} id - Customer ID
+ * Get all customer segments
  * @returns {Promise<Object>} Response data
  */
-function getCustomerById(id) {
-  return axios.get(`${API_URL}/${id}`)
-    .then(response => response)
-    .catch(error => {
-      return handleApiError(error, `Failed to fetch customer with id ${id}`);
-    });
+async function getAllCustomerSegments() {
+  try {
+    const response = await instance.get(`${API_URL}/segments/all`);
+    return response.data;
+  } catch (error) {
+    return handleApiError(error, 'Failed to fetch customer segments');
+  }
 }
 
 /**
@@ -55,12 +82,13 @@ function getCustomerById(id) {
  * @param {Object} customerData - Customer data
  * @returns {Promise<Object>} Response data
  */
-function createCustomer(customerData) {
-  return axios.post(API_URL, customerData)
-    .then(response => response.data)
-    .catch(error => {
-      return handleApiError(error, 'Failed to create customer');
-    });
+async function createCustomer(customerData) {
+  try {
+    const response = await instance.post(API_URL, customerData);
+    return response.data;
+  } catch (error) {
+    return handleApiError(error, 'Failed to create customer');
+  }
 }
 
 /**
@@ -69,12 +97,13 @@ function createCustomer(customerData) {
  * @param {Object} customerData - Customer data
  * @returns {Promise<Object>} Response data
  */
-function updateCustomer(id, customerData) {
-  return axios.put(`${API_URL}/${id}`, customerData)
-    .then(response => response.data)
-    .catch(error => {
-      return handleApiError(error, 'Failed to update customer');
-    });
+async function updateCustomer(id, customerData) {
+  try {
+    const response = await instance.put(`${API_URL}/${id}`, customerData);
+    return response.data;
+  } catch (error) {
+    return handleApiError(error, 'Failed to update customer');
+  }
 }
 
 /**
@@ -82,18 +111,19 @@ function updateCustomer(id, customerData) {
  * @param {string} id - Customer ID
  * @returns {Promise<Object>} Response data
  */
-function deleteCustomer(id) {
-  return axios.delete(`${API_URL}/${id}`)
-    .then(response => response.data)
-    .catch(error => {
-      return handleApiError(error, 'Failed to delete customer');
-    });
+async function deleteCustomer(id) {
+  try {
+    const response = await instance.delete(`${API_URL}/${id}`);
+    return response.data;
+  } catch (error) {
+    return handleApiError(error, 'Failed to delete customer');
+  }
 }
 
-// Create a named service object
 const customerService = {
   getAllCustomers,
   getCustomerById,
+  getAllCustomerSegments,
   createCustomer,
   updateCustomer,
   deleteCustomer
@@ -102,6 +132,7 @@ const customerService = {
 export {
   getAllCustomers,
   getCustomerById,
+  getAllCustomerSegments,
   createCustomer,
   updateCustomer,
   deleteCustomer

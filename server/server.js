@@ -34,7 +34,7 @@ const authRoutes = require('./routes/authRoutes');
 const staffRoutes = require('./routes/staffRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const debugRoutes = require('./routes/debugRoutes');
-const customerRoutes = require('./routes/customerRoutes'); // Add this to your imports
+const customerRoutes = require('./routes/customerRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
 const productRoutes = require('./routes/productRoutes');
 const supplierRoutes = require('./routes/supplierRoutes');
@@ -47,7 +47,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/debug', debugRoutes);
-app.use('/api/customers', customerRoutes); // Add this to your routes configuration
+app.use('/api/customers', customerRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/suppliers', supplierRoutes);
