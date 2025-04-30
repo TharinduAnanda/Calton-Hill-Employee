@@ -13,11 +13,14 @@ import {
   BarChart as BarChartIcon,
   Person as PersonIcon,
   Campaign as MegaphoneIcon,
+  AccountBalance as FinanceIcon,
 } from '@mui/icons-material';
 import LineChartComponent from '../../components/common/LineChartComponent';
 import ControlCenter from './ControlCenter';
 import './OwnerDashboardPage.css';
 import StaffManagement from '../Staff/StaffManagement';
+import FinancialDashboard from '../Financial/FinancialDashboard';
+import CustomerManagement from '../Customers/CustomerManagement';
 
 const DashboardOverview = ({ stats }) => {
   return (
@@ -68,6 +71,18 @@ const DashboardOverview = ({ stats }) => {
           <div className="stats-card-change positive">
             <ArrowUpIcon fontSize="small" />
             <span>+12% vs last month</span>
+          </div>
+        </div>
+
+        <div className="stats-card">
+          <div className="stats-card-header">
+            <FinanceIcon fontSize="small" />
+            <span>Financial Health</span>
+          </div>
+          <div className="stats-card-value">${stats.financialHealth?.toLocaleString() || "0.00"}</div>
+          <div className="stats-card-change positive">
+            <ArrowUpIcon fontSize="small" />
+            <span>View Financial Dashboard</span>
           </div>
         </div>
       </div>
@@ -126,6 +141,24 @@ const DashboardOverview = ({ stats }) => {
             </div>
             <div className="bg-purple-50 p-3 rounded-lg">
               <ShoppingCartIcon className="text-purple-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="metric-card bg-white p-6 rounded-xl shadow-sm">
+          <div className="flex justify-between items-start">
+            <div>
+              <h4 className="text-gray-500 text-sm font-medium mb-1">Total Customers</h4>
+              <p className="text-2xl font-bold text-gray-800">
+                {stats.customerCount || 0}
+              </p>
+              <div className="flex items-center mt-2">
+                <ArrowUpIcon fontSize="small" className="text-green-500 mr-1" />
+                <span className="text-green-500 text-sm">+{stats.newCustomers || 0} new this month</span>
+              </div>
+            </div>
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <PersonIcon className="text-blue-600" />
             </div>
           </div>
         </div>
@@ -228,12 +261,14 @@ const OwnerDashboardPage = () => {
         return <DashboardOverview stats={stats} />;
       case 'staff':
         return <StaffManagement />;
+      case 'financial':
+        return <FinancialDashboard />;
       case 'inventory':
         return <div className="p-6"><h2 className="text-xl font-bold mb-4">Inventory Management</h2><p>Inventory management component would be displayed here</p></div>;
       case 'orders':
         return <div className="p-6"><h2 className="text-xl font-bold mb-4">Orders Management</h2><p>Orders management component would be displayed here</p></div>;
       case 'customers':
-        return <div className="p-6"><h2 className="text-xl font-bold mb-4">Customer Management</h2><p>Customer management component would be displayed here</p></div>;
+        return <CustomerManagement />;
       case 'analytics':
         return <div className="p-6"><h2 className="text-xl font-bold mb-4">Analytics & Reports</h2><p>Analytics and reports component would be displayed here</p></div>;
       case 'marketing':
@@ -345,6 +380,14 @@ const OwnerDashboardPage = () => {
             >
               <AccountCircleIcon fontSize="small" />
               <span>Account</span>
+            </button>
+
+            <button 
+              className={`tab-button ${activeTab === 'financial' ? 'active' : ''}`}
+              onClick={() => handleTabChange('financial')}
+            >
+              <FinanceIcon fontSize="small" />
+              <span>Financial</span>
             </button>
           </div>
         </div>

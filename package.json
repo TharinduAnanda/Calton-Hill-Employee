@@ -4,6 +4,7 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^5.15.15",
     "@mui/material": "^5.15.15",
+    "@mui/x-date-pickers": "^8.1.0",
     "axios": "^1.8.4",
     "chart.js": "^4.4.9",
     "date-fns": "^4.1.0",

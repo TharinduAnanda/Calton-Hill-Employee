@@ -16,11 +16,21 @@ function handleApiError(error, defaultMessage) {
 }
 
 /**
- * Get all customers
+ * Get all customers with pagination and search
+ * @param {Object} options - Query options
+ * @param {number} options.page - Page number
+ * @param {number} options.limit - Items per page
+ * @param {string} options.search - Search term
  * @returns {Promise<Object>} Response data
  */
-function getAllCustomers() {
-  return axios.get(API_URL)
+function getAllCustomers(options = {}) {
+  const { page = 1, limit = 10, search = '', segment = '' } = options;
+  
+  let url = `${API_URL}?page=${page}&limit=${limit}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  if (segment) url += `&segment=${encodeURIComponent(segment)}`;
+  
+  return axios.get(url)
     .then(response => response)
     .catch(error => {
       return handleApiError(error, 'Failed to fetch customers');

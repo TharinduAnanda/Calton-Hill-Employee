@@ -11,6 +11,8 @@ import StaffManagement from './pages/Staff/StaffManagement';
 import OwnerDashboardPage from './pages/Owner/OwnerDashboardPage';
 import DashboardRedirect from './components/common/DashboardRedirect';
 import StaffDashboard from './pages/Staff/StaffDashboard';
+import CustomerDetails from './pages/Customers/CustomerDetails';
+
 
 // Define error components as standalone components
 const UnauthorizedPage = () => (
@@ -208,6 +210,18 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+          
+          {/* Customer details route */}
+          <Route 
+            path="/customers/:id" 
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'owner', 'manager']}>
+                <CustomerDetails />
+              </ProtectedRoute>
+            }
+          />
+          
+      
           
           {/* Error routes - Using direct components instead of referencing the object */}
           <Route path="/unauthorized" element={<UnauthorizedPage />} />

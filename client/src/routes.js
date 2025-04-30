@@ -16,6 +16,10 @@ import ForgotPassword from './pages/Auth/ForgotPassword';
 import StoreSettings from './pages/Owner/StoreSettings';
 import OwnerAccountSettings from './pages/Owner/OwnerAccountSettings';
 import StaffManagement from './pages/Staff/StaffManagement';
+import FinancialDashboard from './pages/Financial/FinancialDashboard';
+import CustomerManagement from './pages/Customers/CustomerManagement'; // Add this import
+// import CustomerList from './pages/Customers/CustomerList';
+import CustomerDetails from './pages/Customers/CustomerDetails';
 
 // Import the error components that already exist in your project
 import NotFound from './components/common/NotFound';
@@ -73,6 +77,29 @@ const routes = [
     exact: true, 
     protected: true,
     allowedRoles: ['manager', 'staff']
+  },
+
+  // Customer management routes
+   {
+    path: '/owner/customers',
+    component: <CustomerManagement />,
+    exact: true, 
+    protected: true,
+    allowedRoles: ['owner']
+  },
+  // {
+  //   path: '/customers',
+  //   component: <CustomerList />,
+  //   exact: true,
+  //   protected: true,
+  //   allowedRoles: ['owner', 'manager', 'staff']
+  // },
+  {
+    path: '/customers/:id',
+    component: <CustomerDetails />,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager', 'staff']
   },
   
   // Staff management routes
@@ -166,6 +193,13 @@ const routes = [
   {
     path: '/account-settings',
     component: OwnerAccountSettings,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner']
+  },
+  {
+    path: '/owner/financial',
+    component: FinancialDashboard,
     exact: true,
     protected: true,
     allowedRoles: ['owner']

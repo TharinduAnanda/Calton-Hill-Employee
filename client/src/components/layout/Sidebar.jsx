@@ -19,6 +19,7 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
+import { AccountBalance } from '@mui/icons-material';
 
 const Sidebar = ({ open, onClose, width = 240 }) => {
   const { currentUser, logout } = useAuth();
@@ -33,6 +34,7 @@ const Sidebar = ({ open, onClose, width = 240 }) => {
     { text: 'Staff Management', icon: <PeopleIcon />, path: '/owner/staff' },
     { text: 'Inventory', icon: <InventoryIcon />, path: '/owner/inventory' },
     { text: 'Orders', icon: <ReceiptIcon />, path: '/owner/orders' },
+    { text: 'Financial', icon: <AccountBalance />, path: '/owner/financial' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/owner/settings' },
   ];
 
