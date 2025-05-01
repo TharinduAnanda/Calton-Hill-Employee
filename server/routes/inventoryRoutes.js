@@ -2,20 +2,35 @@ const express = require('express');
 const { body } = require('express-validator');
 const inventoryController = require('../controllers/inventoryController');
 const enhancedInventoryController = require('../controllers/enhancedInventoryController');
-const { authenticateJWT } = require('../middleware/auth');
+const { authenticateJWT, authorizeRoles } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Apply authentication middleware to all routes
 router.use(authenticateJWT);
 
-// Original inventory routes
-router.get('/', inventoryController.getAllInventory);
-router.get('/low-stock', inventoryController.getLowStockItems);
-router.get('/:id', inventoryController.getInventoryById);
-router.post('/', inventoryController.createInventory);
-router.put('/:id', inventoryController.updateInventory);
-router.delete('/:id', inventoryController.deleteInventory);
+// Summary route - this should be BEFORE the /:id routes to avoid confusion
+router.get('/summary', authorizeRoles(['owner', 'manager', 'staff']), inventoryController.getInventorySummary);
+
+// Low stock items route - also before /:id
+router.get('/low-stock', authorizeRoles(['owner', 'manager', 'staff']), inventoryController.getLowStockItems);
+
+// Stock movement history route - also before /:id
+router.get('/stock-movements', authorizeRoles(['owner', 'manager']), inventoryController.getStockMovementHistory);
+
+// Basic CRUD operations
+router.get('/', authorizeRoles(['owner', 'manager', 'staff']), inventoryController.getAllItems);
+router.post('/', authorizeRoles(['owner', 'manager']), inventoryController.createItem);
+router.get('/:id', authorizeRoles(['owner', 'manager', 'staff']), inventoryController.getInventoryById);
+router.put('/:id', authorizeRoles(['owner', 'manager']), inventoryController.updateItem);
+router.delete('/:id', authorizeRoles(['owner']), inventoryController.deleteItem);
+
+// Adjust inventory quantity
+router.post('/:id/adjust', authorizeRoles(['owner', 'manager', 'staff']), inventoryController.adjustQuantity);
+
+// Batch management
+router.get('/:id/batches', authorizeRoles(['owner', 'manager', 'staff']), inventoryController.getItemBatches);
+router.post('/:id/batches', authorizeRoles(['owner', 'manager']), inventoryController.addItemBatch);
 
 // Enhanced inventory management
 router.get('/product/:productId/batches', enhancedInventoryController.getInventoryWithBatches);

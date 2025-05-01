@@ -9,7 +9,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { getStockMovementHistory } from '../../services/inventoryService';
+import inventoryService from '../../services/inventoryService';
 
 const StockMovementHistory = () => {
   const [movements, setMovements] = useState([]);
@@ -34,7 +34,7 @@ const StockMovementHistory = () => {
           endDate: endDate ? endDate.toISOString() : undefined,
           itemName: itemName || undefined
         };
-        const data = await getStockMovementHistory(filters);
+        const data = await inventoryService.getStockMovementHistory(filters);
         setMovements(data);
       } catch (err) {
         console.error('Error fetching stock movement history:', err);

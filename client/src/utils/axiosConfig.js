@@ -8,33 +8,39 @@ const instance = axios.create({
   }
 });
 
-// Request interceptor to ensure proper URL formatting and add auth token
+// Add this interceptor to prevent relative URLs
 instance.interceptors.request.use(config => {
-  // Ensure the URL is absolute by prepending baseURL if not already present
-  if (!config.url.startsWith('http') && !config.url.startsWith(instance.defaults.baseURL)) {
-    config.url = instance.defaults.baseURL + config.url;
+  if (!config.url.startsWith('http')) {
+    config.url = (instance.defaults.baseURL || 'http://localhost:5000') + config.url;
   }
   
-  // Add authorization token if available
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   
   console.log('Making request to:', config.url);
-  return config}, error => {
+  return config;
+}, error => {
   console.error('Request setup error:', error);
   return Promise.reject(error);
 });
 
-// Response interceptor for error handling
+// Keep your existing response interceptor with enhanced 400 error handling
 instance.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
+    // Enhanced error handling
     if (error.response) {
+      // The request was made and the server responded with a status code
       console.error('Server Error:', error.response.status, error.response.data);
+      
+      // Handle 400 Bad Request specifically
+      if (error.response.status === 400) {
+        error.message = error.response.data?.message || 'Invalid request parameters';
+      }
       
       const contentType = error.response.headers['content-type'] || '';
       if (error.response.status === 200 && !contentType.includes('application/json')) {
@@ -42,10 +48,18 @@ instance.interceptors.response.use(
         return Promise.reject(new Error('Server returned invalid content type'));
       }
     } else if (error.request) {
+      // The request was made but no response was received
       console.error('No response received:', error.request);
     } else {
+      // Something happened in setting up the request
       console.error('Request error:', error.message);
     }
+    
+    // Ensure the error has a proper message
+    if (!error.message) {
+      error.message = 'An unexpected error occurred';
+    }
+    
     return Promise.reject(error);
   }
 );

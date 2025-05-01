@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getInventoryItems, deleteInventoryItem } from '../../services/inventoryService';
+import inventoryService from '../../services/inventoryService';
 import {
   Box,
   Typography,
@@ -48,11 +48,17 @@ const InventoryList = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getInventoryItems();
-      setInventory(data);
-      setFilteredInventory(data);
+      const response = await inventoryService.getInventoryItems();
+      
+      const inventoryData = response?.data?.data || [];
+      
+      setInventory(Array.isArray(inventoryData) ? inventoryData : []);
+      setFilteredInventory(Array.isArray(inventoryData) ? inventoryData : []);
     } catch (err) {
+      console.error('Error fetching inventory items:', err);
       setError(err.message || 'Failed to fetch inventory items');
+      setInventory([]);
+      setFilteredInventory([]);
     } finally {
       setLoading(false);
     }
@@ -63,11 +69,17 @@ const InventoryList = () => {
   }, []);
 
   useEffect(() => {
+    if (!Array.isArray(inventory)) {
+      console.error('Inventory is not an array:', inventory);
+      setFilteredInventory([]);
+      return;
+    }
+    
     if (searchTerm) {
       const filtered = inventory.filter(
         (item) =>
-          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (item.sku && item.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (item.category && item.category.toLowerCase().includes(searchTerm.toLowerCase()))
       );
       setFilteredInventory(filtered);
@@ -104,7 +116,7 @@ const InventoryList = () => {
     if (!itemToDelete) return;
     
     try {
-      await deleteInventoryItem(itemToDelete._id);
+      await inventoryService.deleteInventoryItem(itemToDelete.id || itemToDelete._id);
       fetchInventory();
       closeDeleteDialog();
     } catch (err) {
@@ -193,7 +205,7 @@ const InventoryList = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredInventory.length === 0 ? (
+                {!Array.isArray(filteredInventory) || filteredInventory.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} align="center">
                       No inventory items found
@@ -203,7 +215,7 @@ const InventoryList = () => {
                   filteredInventory
                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                     .map((item) => (
-                      <TableRow key={item._id} hover>
+                      <TableRow key={item.id || item._id} hover>
                         <TableCell>{item.sku}</TableCell>
                         <TableCell>{item.name}</TableCell>
                         <TableCell>{item.category}</TableCell>
@@ -211,12 +223,12 @@ const InventoryList = () => {
                         <TableCell>
                           {getStockLevelChip(item.quantity, item.reorderThreshold)}
                         </TableCell>
-                        <TableCell align="right">${item.costPrice.toFixed(2)}</TableCell>
-                        <TableCell align="right">${item.sellPrice.toFixed(2)}</TableCell>
+                        <TableCell align="right">${(item.costPrice || 0).toFixed(2)}</TableCell>
+                        <TableCell align="right">${(item.sellPrice || 0).toFixed(2)}</TableCell>
                         <TableCell align="center">
                           <IconButton
                             component={Link}
-                            to={`/inventory/${item._id}`}
+                            to={`/inventory/${item.id || item._id}`}
                             size="small"
                             color="primary"
                           >
@@ -240,7 +252,7 @@ const InventoryList = () => {
         <TablePagination
           rowsPerPageOptions={[5, 10, 25, 50]}
           component="div"
-          count={filteredInventory.length}
+          count={Array.isArray(filteredInventory) ? filteredInventory.length : 0}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}

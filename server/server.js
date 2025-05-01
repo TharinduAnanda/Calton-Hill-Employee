@@ -35,12 +35,13 @@ const staffRoutes = require('./routes/staffRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const debugRoutes = require('./routes/debugRoutes');
 const customerRoutes = require('./routes/customerRoutes');
-const inventoryRoutes = require('./routes/inventoryRoutes');
+const inventoryRoutes = require('./routes/inventoryRoutes'); // Add this to your imports
 const productRoutes = require('./routes/productRoutes');
 const supplierRoutes = require('./routes/supplierRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const ownerRoutes = require('./routes/ownerRoutes');
 const financialRoutes = require('./routes/financialRoutes'); // Add this to your imports
+const returnRoutes = require('./routes/returnRoutes'); // This should already be in your file, but make sure it's there
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -48,12 +49,13 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/customers', customerRoutes);
-app.use('/api/inventory', inventoryRoutes);
+app.use('/api/inventory', inventoryRoutes); // Add this to your app.use statements
 app.use('/api/products', productRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/owner', ownerRoutes);
 app.use('/api/financial', financialRoutes); // Add this to your routes configuration
+app.use('/api/returns', returnRoutes); // This should already be in your file, but make sure it's there
 
 // Basic route for API health check
 app.get('/api/health', (req, res) => {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getInventoryItemById, updateInventoryItem } from '../../services/inventoryService';
+import inventoryService from '../../services/inventoryService';
 import productService from '../../services/productService';
 import { getSupplierById } from '../../services/supplierService';
 import { Box, Button, Card, CardContent, CircularProgress, Container, Grid, TextField, Typography, Alert, Breadcrumbs, Link } from '@mui/material';
@@ -25,7 +25,7 @@ const InventoryItem = () => {
     const fetchInventoryItem = async () => {
       try {
         setLoading(true);
-        const data = await getInventoryItemById(id);
+        const data = await inventoryService.getInventoryItemById(id);
         setInventoryItem(data);
         setUpdatedItem({
           stock_level: data.stock_level
@@ -72,7 +72,7 @@ const InventoryItem = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await updateInventoryItem(id, {
+      await inventoryService.updateInventoryItem(id, {
         stock_level: parseInt(updatedItem.stock_level),
         product_id: inventoryItem.product_id,
         supplier_id: inventoryItem.supplier_id

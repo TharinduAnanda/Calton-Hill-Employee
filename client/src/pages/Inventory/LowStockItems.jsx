@@ -8,7 +8,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
 import { useNavigate } from 'react-router-dom';
-import { getLowStockItems } from '../../services/inventoryService';
+import inventoryService from '../../services/inventoryService';
 
 const LowStockItems = () => {
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ const LowStockItems = () => {
     const fetchLowStockItems = async () => {
       try {
         setLoading(true);
-        const data = await getLowStockItems();
+        const data = await inventoryService.getLowStockItems();
         setItems(data);
       } catch (err) {
         console.error('Error fetching low stock items:', err);

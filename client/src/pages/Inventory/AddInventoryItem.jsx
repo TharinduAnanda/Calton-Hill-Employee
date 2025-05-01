@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createInventoryItem } from '../../services/inventoryService';
+import inventoryService from '../../services/inventoryService';
 import productService from '../../services/productService';
 import { getSuppliers } from '../../services/supplierService';
 import {
@@ -125,7 +125,7 @@ const AddInventoryItem = () => {
       setLoading(true);
       setError(null);
       
-      await createInventoryItem(formData);
+      await inventoryService.createInventoryItem(formData);
       navigate('/inventory');
     } catch (err) {
       setError(err.message || 'Failed to create inventory item');

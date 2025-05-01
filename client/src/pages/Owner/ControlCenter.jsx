@@ -10,7 +10,8 @@ import {
   Settings as SettingsIcon,
   BarChart as BarChartIcon,
   ArrowUpward as ArrowUpIcon,
-  ArrowDownward as ArrowDownIcon
+  ArrowDownward as ArrowDownIcon,
+  SwapHoriz as SwapHorizIcon
 } from '@mui/icons-material';
 
 const ControlCenter = ({ 
@@ -99,7 +100,11 @@ const ControlCenter = ({
           </button>
           <button className="action-button">
             <PackageIcon fontSize="small" />
-            <span>Update Stock</span>
+            <span>Manage Inventory</span>
+          </button>
+          <button className="action-button">
+            <SwapHorizIcon fontSize="small" />
+            <span>Handle Returns</span>
           </button>
           <button className="action-button">
             <BarChartIcon fontSize="small" />

@@ -12,7 +12,13 @@ import OwnerDashboardPage from './pages/Owner/OwnerDashboardPage';
 import DashboardRedirect from './components/common/DashboardRedirect';
 import StaffDashboard from './pages/Staff/StaffDashboard';
 import CustomerDetails from './pages/Customers/CustomerDetails';
-
+import InventoryManagement from './pages/Inventory/InventoryManagement';
+import InventoryItem from './pages/Inventory/InventoryItem';
+import AddInventoryItem from './pages/Inventory/AddInventoryItem';
+import LowStockItems from './pages/Inventory/LowStockItems';
+import BatchManagement from './pages/Inventory/BatchManagement';
+import StockMovementHistory from './pages/Inventory/StockMovementHistory';
+import ReturnsList from './pages/Returns/ReturnsList';
 
 // Define error components as standalone components
 const UnauthorizedPage = () => (
@@ -221,7 +227,65 @@ const AppContent = () => {
             }
           />
           
-      
+          {/* Inventory routes */}
+          <Route 
+            path="/owner/inventory" 
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <InventoryManagement />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/owner/inventory/:id" 
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <InventoryItem />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/owner/inventory/add" 
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <AddInventoryItem />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/owner/inventory/low-stock" 
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <LowStockItems />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/owner/inventory/batch/:productId" 
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <BatchManagement />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/owner/inventory/stock-movement" 
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <StockMovementHistory />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Returns routes */}
+          <Route 
+            path="/owner/returns" 
+            element={
+              <ProtectedRoute allowedRoles={['owner', 'manager']}>
+                <ReturnsList />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Error routes - Using direct components instead of referencing the object */}
           <Route path="/unauthorized" element={<UnauthorizedPage />} />

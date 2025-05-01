@@ -14,6 +14,10 @@ import {
   Person as PersonIcon,
   Campaign as MegaphoneIcon,
   AccountBalance as FinanceIcon,
+  Warning as WarningIcon,
+  Add as AddIcon,
+  SwapHoriz as SwapHorizIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 import LineChartComponent from '../../components/common/LineChartComponent';
 import ControlCenter from './ControlCenter';
@@ -21,6 +25,8 @@ import './OwnerDashboardPage.css';
 import StaffManagement from '../Staff/StaffManagement';
 import FinancialDashboard from '../Financial/FinancialDashboard';
 import CustomerManagement from '../Customers/CustomerManagement';
+import InventoryManagement from '../Inventory/InventoryManagement';
+import ReturnsList from '../Returns/ReturnsList';
 
 const DashboardOverview = ({ stats }) => {
   return (
@@ -83,6 +89,32 @@ const DashboardOverview = ({ stats }) => {
           <div className="stats-card-change positive">
             <ArrowUpIcon fontSize="small" />
             <span>View Financial Dashboard</span>
+          </div>
+        </div>
+
+        <div className="stats-card">
+          <div className="stats-card-header">
+            <PackageIcon fontSize="small" />
+            <span>Inventory Value</span>
+          </div>
+          <div className="stats-card-value">${stats.inventoryValue?.toLocaleString() || "0"}</div>
+          <div className="stats-card-change warning">
+            <WarningIcon fontSize="small" />
+            <span>{stats.lowStockItems || 0} low stock items</span>
+          </div>
+        </div>
+
+        <div className="stats-card">
+          <div className="stats-card-header">
+            <SwapHorizIcon fontSize="small" />
+            <span>Returns Management</span>
+          </div>
+          <div className="stats-card-value">
+            {stats.pendingReturns || 0} <span className="text-sm">Pending</span>
+          </div>
+          <div className="stats-card-change warning">
+            <InfoIcon fontSize="small" />
+            <span>${stats.refundAmount?.toLocaleString() || "0"} refund value</span>
           </div>
         </div>
       </div>
@@ -162,6 +194,40 @@ const DashboardOverview = ({ stats }) => {
             </div>
           </div>
         </div>
+
+        <div className="metric-card bg-white p-6 rounded-xl shadow-sm">
+          <div className="flex justify-between items-start">
+            <div>
+              <h4 className="text-gray-500 text-sm font-medium mb-1">Inventory Status</h4>
+              <p className="text-2xl font-bold text-gray-800">{stats.inventoryItems || 0} Items</p>
+              <div className="flex items-center mt-2">
+                <AddIcon fontSize="small" className="text-green-500 mr-1" />
+                <span className="text-green-500 text-sm">+{stats.newInventoryItems || 0} new items this month</span>
+              </div>
+            </div>
+            <div className="bg-yellow-50 p-3 rounded-lg">
+              <PackageIcon className="text-yellow-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="metric-card bg-white p-6 rounded-xl shadow-sm">
+          <div className="flex justify-between items-start">
+            <div>
+              <h4 className="text-gray-500 text-sm font-medium mb-1">Returns & Refunds</h4>
+              <p className="text-2xl font-bold text-gray-800">{stats.totalReturns || 0} Returns</p>
+              <div className="flex items-center mt-2">
+                <SwapHorizIcon fontSize="small" className="text-orange-500 mr-1" />
+                <span className="text-orange-500 text-sm">
+                  {stats.pendingReturns || 0} awaiting approval
+                </span>
+              </div>
+            </div>
+            <div className="bg-orange-50 p-3 rounded-lg">
+              <SwapHorizIcon className="text-orange-600" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -190,40 +256,54 @@ const OwnerDashboardPage = () => {
         pendingOrders: 7,
         revenue: 15640,
         monthlyVisitors: 4580,
-        conversionRate: 3.2
+        conversionRate: 3.2,
+        inventoryItems: 150,
+        lowStockItems: 12,
+        inventoryValue: 24680,
+        newInventoryItems: 5,
+        pendingReturns: 3,
+        totalReturns: 15,
+        refundAmount: 1250
       });
       
       setNotifications([
         {
           id: 1,
-          text: "Inventory low for 'Wireless Headphones' - only 3 units left",
+          text: "New return request (#1234) requires your approval",
           time: "Just now",
           type: "warning",
           read: false
         },
         {
           id: 2,
+          text: "Inventory low for 'Wireless Headphones' - only 3 units left",
+          time: "Just now",
+          type: "warning",
+          read: false
+        },
+        {
+          id: 3,
           text: "New staff request - Sarah Johnson wants to join your team",
           time: "25 minutes ago",
           type: "info",
           read: false
         },
         {
-          id: 3,
+          id: 4,
           text: "April sales report is ready for review",
           time: "2 hours ago",
           type: "info",
           read: true
         },
         {
-          id: 4,
+          id: 5,
           text: "System maintenance scheduled for tonight at 2:00 AM",
           time: "Yesterday",
           type: "info",
           read: true
         },
         {
-          id: 5,
+          id: 6,
           text: "Payment failed for Order #5723 - Customer has been notified",
           time: "Yesterday",
           type: "critical",
@@ -264,11 +344,13 @@ const OwnerDashboardPage = () => {
       case 'financial':
         return <FinancialDashboard />;
       case 'inventory':
-        return <div className="p-6"><h2 className="text-xl font-bold mb-4">Inventory Management</h2><p>Inventory management component would be displayed here</p></div>;
+        return <InventoryManagement />;
       case 'orders':
         return <div className="p-6"><h2 className="text-xl font-bold mb-4">Orders Management</h2><p>Orders management component would be displayed here</p></div>;
       case 'customers':
         return <CustomerManagement />;
+      case 'returns':
+        return <ReturnsList />;
       case 'analytics':
         return <div className="p-6"><h2 className="text-xl font-bold mb-4">Analytics & Reports</h2><p>Analytics and reports component would be displayed here</p></div>;
       case 'marketing':
@@ -340,6 +422,14 @@ const OwnerDashboardPage = () => {
             >
               <ShoppingCartIcon fontSize="small" />
               <span>Orders</span>
+            </button>
+
+            <button 
+              className={`tab-button ${activeTab === 'returns' ? 'active' : ''}`}
+              onClick={() => handleTabChange('returns')}
+            >
+              <SwapHorizIcon fontSize="small" />
+              <span>Returns</span>
             </button>
             
             <button 

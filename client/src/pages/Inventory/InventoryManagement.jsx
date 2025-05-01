@@ -11,7 +11,7 @@ import InventoryList from './InventoryList';
 import LowStockItems from './LowStockItems';
 import StockMovementHistory from './StockMovementHistory';
 import { useNavigate } from 'react-router-dom';
-import { getInventorySummary } from '../../services/inventoryService';
+import inventoryService from '../../services/inventoryService';
 
 const InventoryManagement = () => {
   const navigate = useNavigate();
@@ -23,17 +23,27 @@ const InventoryManagement = () => {
 
   useEffect(() => {
     const fetchSummaryData = async () => {
-      try {
-        setLoading(true);
-        const data = await getInventorySummary();
-        setSummaryData(data);
-      } catch (err) {
-        console.error('Error fetching inventory summary:', err);
-        setError('Failed to load inventory summary data');
-      } finally {
-        setLoading(false);
-      }
+  try {
+    setLoading(true);
+    const summaryData = await inventoryService.getInventorySummary();
+    
+    // Ensure we have the expected data structure
+    const formattedData = {
+      totalItems: summaryData.totalItems || 0,
+      lowStockItems: summaryData.lowStockItems || 0,
+      totalValue: summaryData.totalValue || 0,
+      newItemsThisMonth: summaryData.newItemsThisMonth || 0
     };
+    
+    setSummaryData(formattedData);
+    setError(null);
+  } catch (err) {
+    console.error('Error fetching inventory summary:', err);
+    setError(err.message || 'Failed to load inventory summary');
+  } finally {
+    setLoading(false);
+  }
+};
 
     fetchSummaryData();
   }, []);

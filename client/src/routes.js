@@ -20,6 +20,13 @@ import FinancialDashboard from './pages/Financial/FinancialDashboard';
 import CustomerManagement from './pages/Customers/CustomerManagement'; // Add this import
 // import CustomerList from './pages/Customers/CustomerList';
 import CustomerDetails from './pages/Customers/CustomerDetails';
+import InventoryManagement from './pages/Inventory/InventoryManagement';
+import LowStockItems from './pages/Inventory/LowStockItems';
+import BatchManagement from './pages/Inventory/BatchManagement';
+import StockMovementHistory from './pages/Inventory/StockMovementHistory';
+
+// Keep only the ReturnsList import:
+import ReturnsList from './pages/Returns/ReturnsList';
 
 // Import the error components that already exist in your project
 import NotFound from './components/common/NotFound';
@@ -133,6 +140,48 @@ const routes = [
     protected: true,
     allowedRoles: ['owner', 'manager', 'staff']
   },
+  {
+    path: '/owner/inventory',
+    component: InventoryManagement,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner']
+  },
+  {
+    path: '/owner/inventory/:id',
+    component: InventoryItem,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner']
+  },
+  {
+    path: '/owner/inventory/add',
+    component: AddInventoryItem,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner']
+  },
+  {
+    path: '/owner/inventory/low-stock',
+    component: LowStockItems,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner']
+  },
+  {
+    path: '/owner/inventory/batch/:productId',
+    component: BatchManagement,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner']
+  },
+  {
+    path: '/owner/inventory/stock-movement',
+    component: StockMovementHistory,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner']
+  },
   
   // Product routes
   {
@@ -180,6 +229,15 @@ const routes = [
     exact: true,
     protected: true,
     allowedRoles: ['owner', 'manager', 'staff']
+  },
+  
+  // Returns routes
+  {
+    path: '/owner/returns',
+    component: ReturnsList,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager']
   },
   
   // Settings routes
