@@ -13,5 +13,6 @@ router.post('/', productController.createProduct);
 router.put('/:id', productController.updateProduct);
 router.delete('/:id', productController.deleteProduct);
 router.get('/search', productController.searchProducts);  // Changed from '/search/:query' to '/search'
+router.get('/:id/suppliers', protect, productController.getProductSuppliers);
 
 module.exports = router;

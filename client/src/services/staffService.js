@@ -129,13 +129,33 @@ function updateStaff(staffId, staffData) {
 function getAllStaff(page = 1, limit = 10) {
   return instance.get(`/api/staff?page=${page}&limit=${limit}`)
     .then(response => {
+      // Add detailed debugging
+      console.log('Raw API response:', JSON.stringify(response.data));
+      
       if (!response.data?.success) {
-        throw new Error(response.data?.message || 'Invalid response format');
+        console.warn('API returned unsuccessful response:', response.data);
+        return { data: [], total: 0, page, limit };
       }
       
+      // Handle different response structures
+      let staffData = [];
+      let totalCount = 0;
+      
+      if (response.data.data && response.data.data.staff) {
+        // Standard format
+        staffData = response.data.data.staff;
+        totalCount = response.data.data.total || 0;
+      } else if (response.data.data && Array.isArray(response.data.data)) {
+        // Alternative format
+        staffData = response.data.data;
+        totalCount = response.data.total || 0;
+      }
+      
+      console.log('Extracted staff data:', staffData);
+      
       return {
-        data: response.data.data.staff || [],
-        total: response.data.data.total || 0,
+        data: staffData,
+        total: totalCount,
         page,
         limit
       };

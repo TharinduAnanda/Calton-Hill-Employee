@@ -1,21 +1,21 @@
 const express = require('express');
 const { body } = require('express-validator');
 const returnsController = require('../controllers/returnsController');
-const { authenticateJWT, authorizeRoles } = require('../middleware/auth');
+const { protect, requireRole } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Apply authentication middleware to all routes
-router.use(authenticateJWT);
+// Apply authentication to all routes
+router.use(protect);
 
 // Get all returns with filtering
-router.get('/', authorizeRoles(['owner', 'manager', 'staff']), returnsController.getReturns);
+router.get('/', requireRole(['owner', 'manager', 'staff']), returnsController.getReturns);
 
 // Get returns statistics
-router.get('/statistics', authorizeRoles(['owner', 'manager']), returnsController.getReturnsStatistics);
+router.get('/statistics', requireRole(['owner', 'manager']), returnsController.getReturnsStatistics);
 
 // Get single return details
-router.get('/:id', authorizeRoles(['owner', 'manager', 'staff']), returnsController.getReturnById);
+router.get('/:id', requireRole(['owner', 'manager', 'staff']), returnsController.getReturnById);
 
 // Create a new return
 router.post('/', [
@@ -23,16 +23,16 @@ router.post('/', [
   body('customer_id').notEmpty().withMessage('Customer ID is required'),
   body('return_reason').notEmpty().withMessage('Return reason is required'),
   body('items').isArray().withMessage('Items must be an array')
-], authorizeRoles(['owner', 'manager', 'staff']), returnsController.createReturn);
+], requireRole(['owner', 'manager', 'staff']), returnsController.createReturn);
 
 // Process a return (approve/reject)
 router.patch('/:id/process', [
   body('status').isIn(['APPROVED', 'REJECTED']).withMessage('Status must be either APPROVED or REJECTED')
-], authorizeRoles(['owner', 'manager']), returnsController.processReturn);
+], requireRole(['owner', 'manager']), returnsController.processReturn);
 
 // Complete a return
 router.patch('/:id/complete', [
   body('refund_method').notEmpty().withMessage('Refund method is required')
-], authorizeRoles(['owner', 'manager']), returnsController.completeReturn);
+], requireRole(['owner', 'manager']), returnsController.completeReturn);
 
 module.exports = router;

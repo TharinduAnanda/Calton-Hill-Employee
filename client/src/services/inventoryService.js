@@ -48,10 +48,48 @@ const getInventoryItemById = async (id) => {
  */
 const createInventoryItem = async (itemData) => {
   try {
-    const response = await axios.post(API_URL, itemData);
-    return response;
+    console.log('Creating inventory item with data:', itemData);
+    
+    // Format the data properly for the API
+    const formattedData = {
+      sku: itemData.sku,
+      name: itemData.name,
+      description: itemData.description || '',
+      category: itemData.category || '',
+      subcategory: itemData.subcategory || '',
+      brand: itemData.brand || '',
+      manufacturer: itemData.manufacturer || '',
+      
+      // Ensure these field names match what the API expects
+      stock_level: Number(itemData.quantity || 0),
+      reorder_level: Number(itemData.reorderThreshold || 10),
+      location: itemData.location || '',
+      cost_price: Number(itemData.costPrice || 0),
+      sell_price: Number(itemData.sellPrice || 0),
+      
+      // Convert IDs to integers (or null) and use the correct field names
+      product_id: itemData.productId ? parseInt(itemData.productId, 10) : null,
+      supplier_id: itemData.supplier_id ? parseInt(itemData.supplier_id, 10) : null,
+    };
+    
+    console.log('Sending formatted data to API:', formattedData);
+    const response = await axios.post(API_URL, formattedData);
+    return response.data;
   } catch (error) {
     console.error('Error creating inventory item:', error);
+    
+    if (error.response && error.response.data) {
+      console.error('Server validation errors:', error.response.data.errors);
+      
+      if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
+        const errorMessages = error.response.data.errors.map(err => 
+          `${err.param || ''}: ${err.msg || err.message || 'Invalid'}`
+        ).join(', ');
+        
+        error.message = errorMessages || error.message;
+      }
+    }
+    
     throw error;
   }
 };
@@ -167,13 +205,23 @@ const getStockMovementHistory = async (options = {}) => {
         startDate: options.startDate || '',
         endDate: options.endDate || '',
         itemId: options.itemId || '',
+        itemName: options.itemName || '',
         type: options.type || ''
       }
     });
-    return response;
+    
+    // Ensure we're returning an array even if response structure varies
+    if (response.data?.data && Array.isArray(response.data.data)) {
+      return response.data.data;
+    } else if (Array.isArray(response.data)) {
+      return response.data;
+    } else {
+      console.warn('Unexpected response structure:', response.data);
+      return [];
+    }
   } catch (error) {
     console.error('Error fetching stock movement history:', error);
-    throw error;
+    return []; // Return empty array to prevent UI errors
   }
 };
 
@@ -215,6 +263,131 @@ const addInventoryBatch = async (itemId, batchData) => {
   }
 };
 
+/**
+ * Get inventory categories
+ * @returns {Promise<Object>} Response with inventory categories
+ */
+const getInventoryCategories = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/categories`);
+    return response;
+  } catch (error) {
+    console.error('Error fetching inventory categories:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get inventory forecast
+ * @param {Object} options - Query parameters
+ * @returns {Promise<Object>} Response with inventory forecast data
+ */
+const getInventoryForecast = async (options = {}) => {
+  try {
+    const response = await axios.get(`${API_URL}/forecast`, {
+      params: {
+        days: options.days || 30
+      }
+    });
+    return response;
+  } catch (error) {
+    console.error('Error fetching inventory forecast:', error);
+    throw error;
+  }
+};
+
+/**
+ * Generate purchase orders for low stock items
+ * @returns {Promise<Object>} Response with purchase orders data
+ */
+const generatePurchaseOrders = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/purchase-orders`);
+    return response;
+  } catch (error) {
+    console.error('Error generating purchase orders:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get inventory turnover report
+ * @param {Object} options - Query parameters
+ * @returns {Promise<Object>} Response with turnover report data
+ */
+const getInventoryTurnoverReport = async (options = {}) => {
+  try {
+    const response = await axios.get(`${API_URL}/turnover-report`, {
+      params: {
+        period: options.period || 90
+      }
+    });
+    return response;
+  } catch (error) {
+    console.error('Error fetching inventory turnover report:', error);
+    throw error;
+  }
+};
+
+/**
+ * Calculate inventory value using specified method
+ * @param {Object} options - Query parameters
+ * @returns {Promise<Object>} Response with valuation data
+ */
+const calculateInventoryValue = async (options = {}) => {
+  try {
+    const response = await axios.get(`${API_URL}/value`, {
+      params: {
+        method: options.method || 'fifo'
+      }
+    });
+    return response;
+  } catch (error) {
+    console.error('Error calculating inventory value:', error);
+    throw error;
+  }
+};
+
+/**
+ * Record stock count
+ * @param {Array} counts - Array of count objects with product_id and counted_quantity
+ * @returns {Promise<Object>} Response data
+ */
+const recordStockCount = async (counts) => {
+  try {
+    const response = await axios.post(`${API_URL}/stock-count`, { counts });
+    return response;
+  } catch (error) {
+    console.error('Error recording stock count:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get inventory audit log
+ * @param {Object} options - Query parameters
+ * @returns {Promise<Object>} Response with audit log data
+ */
+const getInventoryAuditLog = async (options = {}) => {
+  try {
+    const response = await axios.get(`${API_URL}/audit-log`, {
+      params: {
+        page: options.page || 1,
+        limit: options.limit || 20,
+        startDate: options.startDate || '',
+        endDate: options.endDate || '',
+        productId: options.productId || '',
+        username: options.username || '',
+        movementType: options.movementType || ''
+      }
+    });
+    return response;
+  } catch (error) {
+    console.error('Error fetching inventory audit log:', error);
+    throw error;
+  }
+};
+
 const inventoryService = {
   getInventoryItems,
   getInventoryItemById,
@@ -226,7 +399,14 @@ const inventoryService = {
   getLowStockItems,
   getStockMovementHistory,
   getInventoryItemBatches,
-  addInventoryBatch
+  addInventoryBatch,
+  getInventoryCategories,
+  getInventoryForecast,
+  generatePurchaseOrders,
+  getInventoryTurnoverReport,
+  calculateInventoryValue,
+  recordStockCount,
+  getInventoryAuditLog
 };
 
 export default inventoryService;

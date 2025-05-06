@@ -1,205 +1,245 @@
 // src/pages/Suppliers/SupplierList.jsx
 import React, { useState, useEffect } from 'react';
 import { 
-  Paper, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
+  Box, 
+  Typography, 
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
   TableRow,
-  TablePagination,
+  Paper,
   IconButton,
   Tooltip,
   CircularProgress,
-  Box,
-  Typography,
+  Alert,
   TextField,
   InputAdornment
 } from '@mui/material';
-import { Edit, Delete, Visibility, Search } from '@mui/icons-material';
+import { 
+  Visibility as VisibilityIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Search as SearchIcon
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import { getSuppliers, deleteSupplier } from '../../services/supplierService';
-import ConfirmDialog from '../../components/common/ConfirmDialog';
+import supplierService from '../../services/supplierService';
 
 const SupplierList = ({ refresh, onRefresh }) => {
   const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [search, setSearch] = useState('');
-  const [confirmDialog, setConfirmDialog] = useState({
-    open: false,
-    title: '',
-    message: '',
-    onConfirm: null
-  });
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchSuppliers();
   }, [refresh]);
 
   const fetchSuppliers = async () => {
-    setLoading(true);
     try {
-      const response = await getSuppliers();
-      setSuppliers(response.data);
-    } catch (error) {
-      console.error('Error fetching suppliers:', error);
-      toast.error('Failed to load suppliers');
+      setLoading(true);
+      const response = await supplierService.getSuppliers();
+      
+      console.log('Raw API response:', response); // Log the entire response
+      
+      // Better handling of various response formats
+      let suppliersData = [];
+      
+      // Handling direct array response
+      if (Array.isArray(response)) {
+        suppliersData = response;
+      } 
+      // Handling { data: [...] } format
+      else if (response && response.data && Array.isArray(response.data)) {
+        suppliersData = response.data;
+      } 
+      // Handling { success: true, data: [...] } format
+      else if (response && response.success && Array.isArray(response.data)) {
+        suppliersData = response.data;
+      }
+      // Handling { success: true, count: n, data: [...] } format (your controller returns this)
+      else if (response && response.success && response.count && Array.isArray(response.data)) {
+        suppliersData = response.data;
+      }
+      
+      console.log('Processed suppliers data:', suppliersData);
+      
+      setSuppliers(suppliersData || []);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching suppliers:', err);
+      setError('Failed to load suppliers. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  const handleEdit = (id) => {
-    navigate(`/suppliers/edit/${id}`);
-  };
-
-  const handleView = (id) => {
+  const handleViewSupplier = (id) => {
     navigate(`/suppliers/${id}`);
   };
 
-  const handleDelete = (id, name) => {
-    setConfirmDialog({
-      open: true,
-      title: 'Delete Supplier',
-      message: `Are you sure you want to delete ${name}? This action cannot be undone.`,
-      onConfirm: () => confirmDelete(id)
-    });
+  const handleEditSupplier = (id) => {
+    navigate(`/suppliers/edit/${id}`);
   };
 
-  const confirmDelete = async (id) => {
-    try {
-      await deleteSupplier(id);
-      setSuppliers(suppliers.filter(supplier => supplier._id !== id));
-      toast.success('Supplier deleted successfully');
-      if (onRefresh) onRefresh();
-    } catch (error) {
-      console.error('Error deleting supplier:', error);
-      toast.error('Failed to delete supplier');
-    } finally {
-      setConfirmDialog({ ...confirmDialog, open: false });
+  const handleDeleteSupplier = async (id) => {
+    if (window.confirm('Are you sure you want to delete this supplier?')) {
+      try {
+        await supplierService.deleteSupplier(id);
+        fetchSuppliers(); // Refresh the list
+      } catch (err) {
+        console.error('Error deleting supplier:', err);
+        setError('Failed to delete supplier. Please try again later.');
+      }
     }
   };
 
-  const filteredSuppliers = suppliers.filter(supplier => 
-    supplier.name.toLowerCase().includes(search.toLowerCase()) ||
-    supplier.contactPerson?.toLowerCase().includes(search.toLowerCase()) ||
-    supplier.email?.toLowerCase().includes(search.toLowerCase()) ||
-    supplier.phone?.includes(search)
-  );
+  // Filter suppliers based on search term
+  const filteredSuppliers = suppliers.filter(supplier => {
+    const searchFields = [
+      supplier.name || supplier.Name || '',
+      supplier.contactPerson || supplier.Contact_Person || '',
+      supplier.email || supplier.Email || '',
+      supplier.phone || supplier.Phone_Number || ''
+    ].map(field => field.toString().toLowerCase());
+    
+    return searchFields.some(field => field.includes(searchTerm.toLowerCase()));
+  });
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" p={3}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
-    <>
-      <Box mb={3}>
-        <TextField
-          fullWidth
-          variant="outlined"
-          placeholder="Search suppliers..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search />
-              </InputAdornment>
-            ),
-          }}
-        />
-      </Box>
+    <Box>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
-      <Paper elevation={2}>
-        {loading ? (
-          <Box display="flex" justifyContent="center" alignItems="center" height="200px">
-            <CircularProgress />
-          </Box>
-        ) : filteredSuppliers.length === 0 ? (
-          <Box p={3} textAlign="center">
-            <Typography variant="h6" color="textSecondary">
-              No suppliers found
-            </Typography>
-          </Box>
-        ) : (
-          <>
-            <TableContainer>
-              <Table stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Contact Person</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Phone</TableCell>
-                    <TableCell align="center">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredSuppliers
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((supplier) => (
-                      <TableRow key={supplier._id} hover>
-                        <TableCell>{supplier.name}</TableCell>
-                        <TableCell>{supplier.contactPerson}</TableCell>
-                        <TableCell>{supplier.email}</TableCell>
-                        <TableCell>{supplier.phone}</TableCell>
-                        <TableCell align="center">
-                          <Tooltip title="View Details">
-                            <IconButton size="small" onClick={() => handleView(supplier._id)}>
-                              <Visibility />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Edit">
-                            <IconButton size="small" onClick={() => handleEdit(supplier._id)}>
-                              <Edit />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Delete">
-                            <IconButton 
-                              size="small" 
-                              color="error" 
-                              onClick={() => handleDelete(supplier._id, supplier.name)}
-                            >
-                              <Delete />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25]}
-              component="div"
-              count={filteredSuppliers.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-            />
-          </>
-        )}
-      </Paper>
-
-      <ConfirmDialog
-        open={confirmDialog.open}
-        title={confirmDialog.title}
-        message={confirmDialog.message}
-        onConfirm={confirmDialog.onConfirm}
-        onClose={() => setConfirmDialog({ ...confirmDialog, open: false })}
+      <TextField
+        fullWidth
+        margin="normal"
+        placeholder="Search suppliers..."
+        variant="outlined"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon />
+            </InputAdornment>
+          ),
+        }}
+        sx={{ mb: 2 }}
       />
-    </>
+
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow sx={{ backgroundColor: 'primary.light' }}>
+              <TableCell>Name</TableCell>
+              <TableCell>Contact Person</TableCell>
+              <TableCell>Email</TableCell>
+              <TableCell>Phone</TableCell>
+              <TableCell>Address</TableCell>
+              <TableCell align="center">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredSuppliers.length > 0 ? (
+              filteredSuppliers.map((supplier) => (
+                <TableRow key={supplier._id || supplier.Supplier_ID} hover>
+                  <TableCell>{supplier.name || supplier.Name}</TableCell>
+                  <TableCell>{supplier.contactPerson || supplier.Contact_Person || 'N/A'}</TableCell>
+                  <TableCell>{supplier.email || supplier.Email}</TableCell>
+                  <TableCell>{supplier.phone || supplier.Phone_Number}</TableCell>
+                  <TableCell>
+                    {(() => {
+                      // First try formattedAddress if it exists
+                      if (supplier.formattedAddress) {
+                        return supplier.formattedAddress;
+                      }
+                      
+                      // If we have address as an object with street, city, etc.
+                      if (supplier.address && typeof supplier.address === 'object') {
+                        const parts = [
+                          supplier.address.street,
+                          supplier.address.city,
+                          supplier.address.state,
+                          supplier.address.zipCode,
+                          supplier.address.country
+                        ].filter(Boolean);
+                        
+                        return parts.length > 0 ? parts.join(', ') : 'No address provided';
+                      }
+                      
+                      // Try individual fields directly on the supplier
+                      const directParts = [
+                        supplier.street,
+                        supplier.city,
+                        supplier.state,
+                        supplier.zipCode,
+                        supplier.country
+                      ].filter(Boolean);
+                      
+                      if (directParts.length > 0) {
+                        return directParts.join(', ');
+                      }
+                      
+                      // As a last resort, check for Address field
+                      return supplier.Address || 'No address provided';
+                    })()}
+                  </TableCell>
+                  <TableCell align="center">
+                    <Tooltip title="View Details">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleViewSupplier(supplier._id || supplier.Supplier_ID)}
+                      >
+                        <VisibilityIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Edit">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleEditSupplier(supplier._id || supplier.Supplier_ID)}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton 
+                        size="small" 
+                        color="error"
+                        onClick={() => handleDeleteSupplier(supplier._id || supplier.Supplier_ID)}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} align="center">
+                  <Typography variant="body1" py={3}>
+                    {searchTerm ? 'No suppliers match your search criteria.' : 'No suppliers found in the system. Add your first supplier!'}
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
   );
 };
 

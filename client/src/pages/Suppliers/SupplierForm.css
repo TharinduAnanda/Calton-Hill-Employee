@@ -1,0 +1,308 @@
+/* Modern Supplier Form Styling */
+.supplier-form-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 20px;
+}
+
+.supplier-form-paper {
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    background: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.form-header {
+    background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+    padding: 1.75rem 2.5rem;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.form-header::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 70%);
+}
+
+.form-title {
+    font-weight: 700;
+    margin: 0;
+    font-size: 1.75rem;
+    position: relative;
+    z-index: 2;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.form-title svg {
+    font-size: 1.8rem;
+}
+
+.form-content {
+    padding: 2.5rem;
+}
+
+.section-title {
+    font-weight: 600;
+    color: #3a0ca3;
+    margin: 2rem 0 1.25rem;
+    font-size: 1.25rem;
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.section-title::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 24px;
+    width: 4px;
+    background: linear-gradient(to bottom, #4361ee, #7209b7);
+    border-radius: 4px;
+}
+
+.form-field {
+    margin-bottom: 1.5rem;
+}
+
+.form-field .MuiOutlinedInput-root {
+    border-radius: 10px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(245, 245, 245, 0.5);
+}
+
+.form-field .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+    border-color: #b8c2ff;
+}
+
+.form-field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+    border-color: #4361ee;
+    border-width: 2px;
+    box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.1);
+}
+
+.form-field .MuiOutlinedInput-input {
+    padding: 14px 16px;
+    font-size: 0.95rem;
+}
+
+.form-field .MuiInputLabel-root {
+    transform: translate(16px, 16px) scale(1);
+    font-weight: 500;
+    color: #64748b;
+}
+
+.form-field .MuiInputLabel-shrink {
+    transform: translate(16px, -9px) scale(0.85);
+    background: white;
+    padding: 0 6px;
+    border-radius: 4px;
+}
+
+.form-buttons {
+    margin-top: 3rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.cancel-button {
+    color: #64748b;
+    background: white;
+    border: 1px solid #e2e8f0;
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.cancel-button:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.submit-button {
+    background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+    color: white;
+    min-width: 160px;
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: none;
+    box-shadow: 0 4px 6px rgba(67, 97, 238, 0.2);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.submit-button::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.submit-button:hover {
+    box-shadow: 0 6px 12px rgba(67, 97, 238, 0.3);
+    transform: translateY(-1px);
+}
+
+.loading-spinner {
+    color: white;
+}
+
+/* Address section */
+.address-section {
+    background: rgba(248, 250, 252, 0.7);
+    padding: 1.75rem;
+    margin: 2rem 0;
+    border-radius: 12px;
+    border: 1px solid rgba(226, 232, 240, 0.5);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+/* Additional info section */
+.additional-info-section {
+    background: linear-gradient(135deg, rgba(240, 245, 255, 0.7) 0%, rgba(232, 240, 254, 0.7) 100%);
+    padding: 1.75rem;
+    margin: 2rem 0;
+    border-radius: 12px;
+    border: 1px solid rgba(219, 234, 254, 0.5);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+/* Floating label effect */
+.MuiFormLabel-filled {
+    color: #3a0ca3 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+    .form-content {
+        padding: 1.75rem;
+    }
+
+    .form-header {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .supplier-form-container {
+        padding: 0 1rem;
+    }
+
+    .form-buttons {
+        flex-direction: column-reverse;
+        gap: 0.75rem;
+    }
+
+    .cancel-button,
+    .submit-button {
+        width: 100%;
+    }
+}
+
+/* Animation */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.form-content>* {
+    animation: fadeInUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    opacity: 0;
+}
+
+.form-content>*:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.form-content>*:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.form-content>*:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.form-content>*:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+/* Glow effect on focus */
+@keyframes inputGlow {
+    0% {
+        box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.3);
+    }
+
+    100% {
+        box-shadow: 0 0 0 6px rgba(67, 97, 238, 0);
+    }
+}
+
+.form-field .MuiOutlinedInput-root.Mui-focused {
+    animation: inputGlow 0.6s ease-out;
+}
+
+/* Add these styles to your existing CSS */
+.product-category-accordion .MuiAccordionSummary-root {
+    background-color: rgba(63, 81, 181, 0.08);
+}
+
+.product-category-accordion .MuiAccordionSummary-root.Mui-expanded {
+    background-color: rgba(63, 81, 181, 0.12);
+}
+
+.supplier-card {
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.supplier-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+.supplier-badge {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+/* View toggle styling */
+.view-toggle {
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    padding: 8px;
+}

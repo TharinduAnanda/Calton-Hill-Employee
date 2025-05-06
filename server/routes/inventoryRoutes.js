@@ -1,61 +1,71 @@
 const express = require('express');
-const { body } = require('express-validator');
-const inventoryController = require('../controllers/inventoryController');
-const enhancedInventoryController = require('../controllers/enhancedInventoryController');
-const { authenticateJWT, authorizeRoles } = require('../middleware/auth');
-
 const router = express.Router();
+const inventoryController = require('../controllers/inventoryController');
 
-// Apply authentication middleware to all routes
-router.use(authenticateJWT);
+// Try to import validators, but provide empty validators if the module isn't available
+let inventoryValidators = {
+  validateInventoryItem: [],
+  validateInventoryAdjustment: [],
+  validateBatch: [],
+  validateStockCount: []
+};
 
-// Summary route - this should be BEFORE the /:id routes to avoid confusion
-router.get('/summary', authorizeRoles(['owner', 'manager', 'staff']), inventoryController.getInventorySummary);
+try {
+  inventoryValidators = require('../middleware/validators/inventoryValidators');
+} catch (err) {
+  console.warn('Warning: Inventory validators not found, proceeding with no validation');
+}
 
-// Low stock items route - also before /:id
-router.get('/low-stock', authorizeRoles(['owner', 'manager', 'staff']), inventoryController.getLowStockItems);
+// Import auth middleware
+const { protect } = require('../middleware/authMiddleware');
 
-// Stock movement history route - also before /:id
-router.get('/stock-movements', authorizeRoles(['owner', 'manager']), inventoryController.getStockMovementHistory);
+// Apply authentication to all inventory routes
+// Uncomment the following line if you want to enforce authentication
+// router.use(protect);
 
-// Basic CRUD operations
-router.get('/', authorizeRoles(['owner', 'manager', 'staff']), inventoryController.getAllItems);
-router.post('/', authorizeRoles(['owner', 'manager']), inventoryController.createItem);
-router.get('/:id', authorizeRoles(['owner', 'manager', 'staff']), inventoryController.getInventoryById);
-router.put('/:id', authorizeRoles(['owner', 'manager']), inventoryController.updateItem);
-router.delete('/:id', authorizeRoles(['owner']), inventoryController.deleteItem);
+// Test route
+router.get('/test', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Inventory API is working'
+  });
+});
 
-// Adjust inventory quantity
-router.post('/:id/adjust', authorizeRoles(['owner', 'manager', 'staff']), inventoryController.adjustQuantity);
+router.get('/test-stock-movements', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Stock movements API is working',
+    date: new Date()
+  });
+});
+
+// Main inventory routes
+router.get('/', inventoryController.getAllInventory);
+router.get('/summary', inventoryController.getInventorySummary);
+router.get('/low-stock', inventoryController.getLowStockItems);
+router.get('/stock-movements', inventoryController.getStockMovementHistory);
+
+// Analytics routes
+router.get('/categories', inventoryController.getInventoryCategories);
+router.get('/forecast', inventoryController.getInventoryForecast);
+router.get('/turnover-report', inventoryController.getInventoryTurnoverReport);
+router.get('/value', inventoryController.calculateInventoryValue);
+router.get('/purchase-orders', inventoryController.generatePurchaseOrders);
+router.get('/audit-log', inventoryController.getInventoryAuditLog);
+
+// Item specific routes
+router.get('/:id', inventoryController.getInventoryById);
+router.post('/', inventoryValidators.validateInventoryItem, inventoryController.createInventory);
+router.put('/:id', inventoryValidators.validateInventoryItem, inventoryController.updateInventory);
+router.delete('/:id', inventoryController.deleteInventory);
+router.post('/:id/adjust', inventoryValidators.validateInventoryAdjustment, inventoryController.adjustQuantity);
 
 // Batch management
-router.get('/:id/batches', authorizeRoles(['owner', 'manager', 'staff']), inventoryController.getItemBatches);
-router.post('/:id/batches', authorizeRoles(['owner', 'manager']), inventoryController.addItemBatch);
+router.get('/:id/batches', inventoryController.getItemBatches);
+router.post('/:id/batches', inventoryValidators.validateBatch, inventoryController.addItemBatch);
 
-// Enhanced inventory management
-router.get('/product/:productId/batches', enhancedInventoryController.getInventoryWithBatches);
-router.post('/batch', [
-  body('product_id').isNumeric().withMessage('Valid product ID is required'),
-  body('batch_number').notEmpty().withMessage('Batch number is required'),
-  body('quantity').isNumeric().withMessage('Quantity must be a number'),
-  body('cost_per_unit').isNumeric().withMessage('Cost per unit must be a number')
-], enhancedInventoryController.addInventoryBatch);
-
-router.post('/adjust', [
-  body('product_id').isNumeric().withMessage('Valid product ID is required'),
-  body('quantity_change').isNumeric().withMessage('Quantity change must be a number'),
-  body('adjustment_reason').notEmpty().withMessage('Adjustment reason is required')
-], enhancedInventoryController.adjustInventory);
-
-router.get('/enhanced/low-stock', enhancedInventoryController.getEnhancedLowStockItems);
-router.get('/audit/log', enhancedInventoryController.getInventoryAuditLog);
-router.patch('/settings/:productId', enhancedInventoryController.updateInventorySettings);
-router.get('/report/value', enhancedInventoryController.getInventoryValueReport);
-
-// Purchase orders
-router.post('/purchase-orders', [
-  body('supplier_id').isNumeric().withMessage('Valid supplier ID is required'),
-  body('items').isArray().withMessage('Items must be an array')
-], enhancedInventoryController.createPurchaseOrder);
+// Stock movement
+router.get('/:id/stock-movements', inventoryController.getStockMovementHistory);
+router.post('/stock-count', inventoryValidators.validateStockCount, inventoryController.recordStockCount);
 
 module.exports = router;

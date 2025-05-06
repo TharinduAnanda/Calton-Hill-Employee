@@ -13,6 +13,10 @@ const ProductDetail = () => {
   const fetchProductData = useCallback(async () => {
     try {
       setLoading(true);
+      // Check for special paths that should not be treated as IDs
+      if (id === 'add' || id === 'edit') {
+        throw new Error('Invalid product ID');
+      }
       const data = await productService.getProductById(id);
       setProduct(data);
       setError(null);

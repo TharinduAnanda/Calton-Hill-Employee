@@ -2,56 +2,94 @@ import axios from '../utils/axiosConfig';
 
 const API_URL = '/api/suppliers';
 
-export const getSuppliers = async () => {
+// Get all suppliers
+const getSuppliers = async () => {
   try {
+    console.log('Fetching suppliers...');
     const response = await axios.get(API_URL);
+    console.log('Suppliers API response:', response.data);
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: 'Failed to fetch suppliers' };
+    console.error('Error fetching suppliers:', error);
+    throw error;
   }
 };
 
-export const getSupplierById = async (id) => {
+// Get supplier by ID
+const getSupplierById = async (id) => {
   try {
     const response = await axios.get(`${API_URL}/${id}`);
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: 'Failed to fetch supplier' };
+    console.error(`Error fetching supplier #${id}:`, error);
+    throw error;
   }
 };
 
-export const createSupplier = async (supplierData) => {
+// Create a new supplier
+const createSupplier = async (supplierData) => {
   try {
     const response = await axios.post(API_URL, supplierData);
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: 'Failed to create supplier' };
+    console.error('Error creating supplier:', error);
+    throw error;
   }
 };
 
-export const updateSupplier = async (id, supplierData) => {
+// Update a supplier
+const updateSupplier = async (id, supplierData, config = {}) => {
   try {
-    const response = await axios.put(`${API_URL}/${id}`, supplierData);
+    console.log(`Sending update request for supplier #${id}...`);
+    const response = await axios.put(`${API_URL}/${id}`, supplierData, config);
+    console.log(`Update successful for supplier #${id}:`, response.data);
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: 'Failed to update supplier' };
+    console.error(`Error updating supplier #${id}:`, error);
+    throw error;
   }
 };
 
-export const deleteSupplier = async (id) => {
+// Delete a supplier
+const deleteSupplier = async (id) => {
   try {
     const response = await axios.delete(`${API_URL}/${id}`);
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: 'Failed to delete supplier' };
+    console.error(`Error deleting supplier #${id}:`, error);
+    throw error;
   }
 };
 
-export const getSupplierProducts = async (id) => {
+// Get supplier's inventory
+const getSupplierInventory = async (id) => {
   try {
-    const response = await axios.get(`${API_URL}/${id}/products`);
+    const response = await axios.get(`${API_URL}/${id}/inventory`);
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: 'Failed to fetch supplier products' };
+    console.error(`Error fetching inventory for supplier #${id}:`, error);
+    throw error;
   }
 };
+
+// Export as named exports
+export {
+  getSuppliers,
+  getSupplierById,
+  createSupplier,
+  updateSupplier,
+  deleteSupplier,
+  getSupplierInventory
+};
+
+// Also provide a default export for backward compatibility
+const supplierService = {
+  getSuppliers,
+  getSupplierById,
+  createSupplier,
+  updateSupplier,
+  deleteSupplier,
+  getSupplierInventory
+};
+
+export default supplierService;

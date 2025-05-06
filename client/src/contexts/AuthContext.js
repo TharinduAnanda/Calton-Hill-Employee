@@ -138,17 +138,21 @@ function loginStaffMember(email, password, setCurrentUser) {
       // Store token
       localStorage.setItem('token', token);
       instance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // Update user state with more flexible field mapping
-      setCurrentUser({
-        staff_id: staff.staff_id || staff.id,
-        first_name: staff.first_name || staff.firstName || (staff.name ? staff.name.split(' ')[0] : ''),
-        last_name: staff.last_name || staff.lastName || (staff.name ? staff.name.split(' ').slice(1).join(' ') : ''),
-        email: staff.email,
-        role: staff.role || 'staff',
-        owner_id: staff.owner_id || staff.ownerId,
+
+      // Ensure you're storing the user's ID correctly
+      const userData = {
+        id: staff.staff_id || staff.id || staff._id,
+        owner_id: staff.owner_id || staff.Owner_ID || staff.ownerId || staff.OwnerId,
+        first_name: staff.first_name || staff.firstName || staff.First_Name || (staff.name ? staff.name.split(' ')[0] : ''),
+        last_name: staff.last_name || staff.lastName || staff.Last_Name || (staff.name ? staff.name.split(' ').slice(1).join(' ') : ''),
+        email: staff.email || staff.Email,
+        role: staff.role || staff.Role || 'staff',
         type: 'staff'
-      });
+      };
+
+      console.log('Setting user data with owner_id:', userData.owner_id);
+      console.log('Original staff object:', staff);
+      setCurrentUser(userData);
       
       return staff;
     })

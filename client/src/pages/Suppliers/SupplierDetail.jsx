@@ -37,9 +37,12 @@ const SupplierDetail = () => {
       const supplierResponse = await getSupplierById(id);
       setSupplier(supplierResponse.data);
       
-      // Get related products
-      const productsResponse = await productService.getProductsBySupplier(id);
-      setRelatedProducts(productsResponse.data);
+      // Use the products data that comes with the supplier
+      if (supplierResponse.data && supplierResponse.data.products) {
+        setRelatedProducts(supplierResponse.data.products);
+      } else {
+        setRelatedProducts([]);
+      }
     } catch (error) {
       console.error('Error fetching supplier details:', error);
       toast.error('Failed to load supplier details');
@@ -190,6 +193,43 @@ const SupplierDetail = () => {
           </Grid>
           
           <Grid item xs={12}>
+            <Box mb={3}>
+              <Typography variant="h6" gutterBottom>
+                Products Supplied
+              </Typography>
+              {supplier.products && supplier.products.length > 0 ? (
+                <Grid container spacing={2}>
+                  {supplier.products.map(product => (
+                    <Grid item key={product.Product_ID} xs={12} sm={6} md={4}>
+                      <Paper variant="outlined" sx={{ p: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+                          {product.Name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          SKU: {product.SKU || 'N/A'}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Category: {product.Category || 'N/A'}
+                        </Typography>
+                        <Box sx={{ mt: 1 }}>
+                          <Button 
+                            variant="text" 
+                            size="small" 
+                            onClick={() => navigate(`/products/${product.Product_ID}`)}
+                          >
+                            View Product
+                          </Button>
+                        </Box>
+                      </Paper>
+                    </Grid>
+                  ))}
+                </Grid>
+              ) : (
+                <Typography color="text.secondary">
+                  No products specified for this supplier
+                </Typography>
+              )}
+            </Box>
             <Divider sx={{ my: 2 }} />
             {supplier.notes ? (
               <Box>

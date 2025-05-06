@@ -2,29 +2,25 @@ import axios from 'axios';
 
 const instance = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
-  timeout: 5000,
+  timeout: 10000, // Increase timeout to 10 seconds (from 5 seconds)
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-// Add this interceptor to prevent relative URLs
-instance.interceptors.request.use(config => {
-  if (!config.url.startsWith('http')) {
-    config.url = (instance.defaults.baseURL || 'http://localhost:5000') + config.url;
+// Add request interceptor to add auth token
+instance.interceptors.request.use(
+  config => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  error => {
+    return Promise.reject(error);
   }
-  
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  
-  console.log('Making request to:', config.url);
-  return config;
-}, error => {
-  console.error('Request setup error:', error);
-  return Promise.reject(error);
-});
+);
 
 // Keep your existing response interceptor with enhanced 400 error handling
 instance.interceptors.response.use(

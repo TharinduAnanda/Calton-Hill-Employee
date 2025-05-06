@@ -1,17 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const supplierController = require('../controllers/supplierController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware'); // Changed from '../middleware/auth'
 
-// All routes are protected
-router.use(protect);
+// GET all suppliers
+router.get('/', protect, supplierController.getSuppliers);
 
-// Routes
-router.get('/', supplierController.getAllSuppliers);
-router.get('/:id', supplierController.getSupplierById);
-router.post('/', supplierController.createSupplier);
-router.put('/:id', supplierController.updateSupplier);
-router.delete('/:id', supplierController.deleteSupplier);
-router.get('/:id/inventory', supplierController.getSupplierInventory);
+// GET supplier by ID
+router.get('/:id', protect, supplierController.getSupplierById);
+
+// POST create new supplier
+router.post('/', protect, supplierController.createSupplier);
+
+// PUT update supplier
+router.put('/:id', protect, supplierController.updateSupplier);
+
+// DELETE supplier
+router.delete('/:id', protect, supplierController.deleteSupplier);
+
+// GET supplier inventory
+router.get('/:id/inventory', protect, supplierController.getSupplierInventory);
 
 module.exports = router;

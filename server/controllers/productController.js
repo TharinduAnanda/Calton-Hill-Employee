@@ -147,11 +147,64 @@ const searchProducts = async (req, res) => {
   }
 };
 
+/**
+ * Get suppliers for a specific product
+ */
+const getProductSuppliers = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Query to get all suppliers who provide this product
+    const suppliers = await executeQuery(
+      `SELECT s.* FROM supplier s
+       JOIN supplier_product sp ON s.Supplier_ID = sp.supplier_id
+       WHERE sp.product_id = ?`,
+      [id]
+    );
+    
+    res.status(200).json({
+      success: true,
+      count: suppliers.length,
+      data: suppliers.map(supplier => supplier.Supplier_ID) // Return just the IDs
+    });
+  } catch (error) {
+    console.error(`Error fetching suppliers for product #${req.params.id}:`, error);
+    res.status(500).json({
+      success: false,
+      message: `Failed to retrieve suppliers for product`,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get product categories
+ */
+const getProductCategories = async (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT Category as name, 
+                     LOWER(REPLACE(Category, ' ', '-')) as id
+      FROM product 
+      WHERE Category IS NOT NULL AND Category != ''
+      ORDER BY Category
+    `;
+    
+    const categories = await executeQuery(query);
+    res.status(200).json(categories);
+  } catch (error) {
+    console.error('Error fetching product categories:', error);
+    res.status(500).json({ message: 'Error fetching product categories' });
+  }
+};
+
 module.exports = {
   getProducts,
   getProductById,
   createProduct,
   updateProduct,
   deleteProduct,
-  searchProducts
+  searchProducts,
+  getProductSuppliers,
+  getProductCategories
 };

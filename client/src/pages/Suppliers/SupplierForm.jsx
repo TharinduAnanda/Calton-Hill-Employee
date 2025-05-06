@@ -1,66 +1,103 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Paper, 
-  Typography, 
-  TextField, 
-  Button, 
-  Grid, 
-  Box, 
-  Divider,
-  CircularProgress
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Container,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  Grid,
+  Box,
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip,
+  OutlinedInput,
+  Checkbox,
+  ListItemText
 } from '@mui/material';
-import { useNavigate, useParams } from 'react-router-dom';
+import { createSupplier, updateSupplier, getSupplierById } from '../../services/supplierService';
+import productService from '../../services/productService';
 import { toast } from 'react-toastify';
-import { getSupplierById, createSupplier, updateSupplier } from '../../services/supplierService';
 
-const initialFormState = {
-  name: '',
-  contactPerson: '',
-  email: '',
-  phone: '',
-  address: {
-    street: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: ''
-  },
-  paymentTerms: '',
-  notes: ''
-};
+// Import styles
+import './SupplierForm.css';
 
 const SupplierForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState(initialFormState);
+  const isEditing = Boolean(id);
+  
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-  const isEditMode = Boolean(id);
-
-  const fetchSupplierData = React.useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await getSupplierById(id);
-      setFormData(response.data);
-    } catch (error) {
-      console.error('Error fetching supplier:', error);
-      toast.error('Failed to load supplier data');
-      navigate('/suppliers');
-    } finally {
-      setLoading(false);
-    }
-  }, [id, navigate]);
+  const [error, setError] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    contactPerson: '',
+    email: '',
+    phone: '',
+    address: {
+      street: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: ''
+    },
+    products: [] // Array of product IDs
+  });
 
   useEffect(() => {
-    if (isEditMode) {
-      fetchSupplierData();
-    }
-  }, [isEditMode, fetchSupplierData]);
+    const fetchInitialData = async () => {
+      try {
+        // Fetch products
+        setLoadingProducts(true);
+        const productsData = await productService.getAllProducts();
+        setProducts(Array.isArray(productsData) ? productsData : 
+                  (productsData?.data ? productsData.data : []));
+        setLoadingProducts(false);
+        
+        // If editing, fetch supplier data
+        if (isEditing) {
+          setLoading(true);
+          const response = await getSupplierById(id);
+          const supplier = response.data;
+          
+          setFormData({
+            name: supplier.Name || '',
+            contactPerson: supplier.Contact_Person || '',
+            email: supplier.Email || '',
+            phone: supplier.Phone_Number || '',
+            address: {
+              street: supplier.street || '',
+              city: supplier.city || '',
+              state: supplier.state || '',
+              zipCode: supplier.zipCode || '',
+              country: supplier.country || ''
+            },
+            products: supplier.products ? supplier.products.map(p => p.Product_ID) : []
+          });
+          setLoading(false);
+        }
+      } catch (err) {
+        setError('Failed to load data');
+        console.error('Error loading form data:', err);
+        setLoading(false);
+        setLoadingProducts(false);
+      }
+    };
+    
+    fetchInitialData();
+  }, [id, isEditing]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     
     if (name.includes('.')) {
+      // Handle nested address fields
       const [parent, child] = name.split('.');
       setFormData({
         ...formData,
@@ -76,218 +113,293 @@ const SupplierForm = () => {
       });
     }
   };
-
-  const validate = () => {
-    const newErrors = {};
+  
+  const handleProductChange = (event) => {
+    const {
+      target: { value },
+    } = event;
     
-    if (!formData.name.trim()) newErrors.name = 'Supplier name is required';
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-    
-    if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setFormData({
+      ...formData,
+      products: typeof value === 'string' ? value.split(',') : value,
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validate()) return;
-    
-    setLoading(true);
     try {
-      if (isEditMode) {
-        await updateSupplier(id, formData);
-        toast.success('Supplier updated successfully');
+      setLoading(true);
+      setError(null);
+      
+      const payload = {
+        name: formData.name,
+        contactPerson: formData.contactPerson,
+        email: formData.email,
+        phone: formData.phone,
+        // Address fields
+        street: formData.address.street,
+        city: formData.address.city,
+        state: formData.address.state,
+        zipCode: formData.address.zipCode,
+        country: formData.address.country,
+        // Products
+        products: formData.products || []
+      };
+      
+      console.log('Submitting supplier data:', payload);
+      
+      let response;
+      
+      // Use a longer timeout for this specific request
+      const requestConfig = { timeout: 30000 };
+      
+      if (isEditing) {
+        console.log(`Updating supplier #${id}...`);
+        response = await updateSupplier(id, payload, requestConfig);
       } else {
-        await createSupplier(formData);
-        toast.success('Supplier created successfully');
+        console.log('Creating new supplier...');
+        response = await createSupplier(payload, requestConfig);
       }
+      
+      console.log('Server response:', response);
+      
+      toast.success(isEditing ? 'Supplier updated successfully!' : 'Supplier created successfully!');
       navigate('/suppliers');
-    } catch (error) {
-      console.error('Error saving supplier:', error);
-      toast.error(error.response?.data?.message || 'Failed to save supplier');
+    } catch (err) {
+      console.error('Error saving supplier:', err);
+      
+      // Improved error reporting
+      let errorMessage = 'An unknown error occurred while saving the supplier.';
+      
+      if (err.code === 'ECONNABORTED') {
+        errorMessage = 'The request took too long to complete. Please try again later.';
+      } else if (err.response) {
+        // Server responded with an error status
+        errorMessage = err.response.data?.message || `Server error (${err.response.status})`;
+      } else if (err.request) {
+        // Request was made but no response received
+        errorMessage = 'No response received from server. Please check your connection.';
+      } else {
+        // Something else went wrong
+        errorMessage = err.message || 'An error occurred while processing your request.';
+      }
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Paper elevation={2}>
-      <Box p={3}>
-        <Typography variant="h5" gutterBottom>
-          {isEditMode ? 'Edit Supplier' : 'Add New Supplier'}
+    <Container maxWidth="lg" className="form-container">
+      <Paper elevation={3} className="form-paper">
+        <Typography variant="h4" className="form-title">
+          {isEditing ? 'Edit Supplier' : 'Add New Supplier'}
         </Typography>
-        <Divider sx={{ mb: 3 }} />
-
-        {loading && !isEditMode ? (
-          <Box display="flex" justifyContent="center" p={3}>
+        
+        {error && (
+          <Typography color="error" className="error-message">
+            {error}
+          </Typography>
+        )}
+        
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
             <CircularProgress />
           </Box>
         ) : (
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="form-content">
             <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+              {/* Basic Information */}
+              <Grid item xs={12}>
+                <Typography variant="h6" className="section-title">
+                  Basic Information
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12} md={6} className="form-field">
                 <TextField
-                  fullWidth
-                  label="Supplier Name"
+                  label="Company Name"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
+                  fullWidth
                   required
-                  error={!!errors.name}
-                  helperText={errors.name}
+                  variant="outlined"
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              
+              <Grid item xs={12} md={6} className="form-field">
                 <TextField
-                  fullWidth
                   label="Contact Person"
                   name="contactPerson"
                   value={formData.contactPerson}
                   onChange={handleChange}
+                  fullWidth
+                  variant="outlined"
+                  helperText="Name of your primary contact at this supplier"
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              
+              <Grid item xs={12} md={6} className="form-field">
                 <TextField
-                  fullWidth
                   label="Email"
                   name="email"
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
+                  fullWidth
                   required
-                  error={!!errors.email}
-                  helperText={errors.email}
+                  variant="outlined"
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              
+              <Grid item xs={12} md={6} className="form-field">
                 <TextField
-                  fullWidth
                   label="Phone"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  required
-                  error={!!errors.phone}
-                  helperText={errors.phone}
+                  fullWidth
+                  variant="outlined"
                 />
               </Grid>
-
+              
+              {/* Address Information */}
               <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                  Address
+                <Typography variant="h6" className="section-title">
+                  Address Information
                 </Typography>
               </Grid>
               
-              <Grid item xs={12}>
+              <Grid item xs={12} className="form-field">
                 <TextField
-                  fullWidth
                   label="Street Address"
                   name="address.street"
                   value={formData.address.street}
                   onChange={handleChange}
+                  fullWidth
+                  variant="outlined"
                 />
               </Grid>
               
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={6} className="form-field">
                 <TextField
-                  fullWidth
                   label="City"
                   name="address.city"
                   value={formData.address.city}
                   onChange={handleChange}
+                  fullWidth
+                  variant="outlined"
                 />
               </Grid>
               
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={6} className="form-field">
                 <TextField
-                  fullWidth
                   label="State/Province"
                   name="address.state"
                   value={formData.address.state}
                   onChange={handleChange}
+                  fullWidth
+                  variant="outlined"
                 />
               </Grid>
               
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={6} className="form-field">
                 <TextField
-                  fullWidth
-                  label="Zip/Postal Code"
+                  label="ZIP/Postal Code"
                   name="address.zipCode"
                   value={formData.address.zipCode}
                   onChange={handleChange}
+                  fullWidth
+                  variant="outlined"
                 />
               </Grid>
               
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={6} className="form-field">
                 <TextField
-                  fullWidth
                   label="Country"
                   name="address.country"
                   value={formData.address.country}
                   onChange={handleChange}
+                  fullWidth
+                  variant="outlined"
                 />
               </Grid>
               
+              {/* Product Selection */}
               <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                  Additional Information
+                <Typography variant="h6" className="section-title">
+                  Products Supplied
                 </Typography>
               </Grid>
               
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Payment Terms"
-                  name="paymentTerms"
-                  value={formData.paymentTerms}
-                  onChange={handleChange}
-                  placeholder="e.g., Net 30, COD"
-                />
+              <Grid item xs={12} className="form-field">
+                <FormControl fullWidth variant="outlined">
+                  <InputLabel>Products</InputLabel>
+                  <Select
+                    multiple
+                    value={formData.products}
+                    onChange={handleProductChange}
+                    input={<OutlinedInput label="Products" />}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((productId) => {
+                          const product = products.find(p => p.Product_ID === productId);
+                          return (
+                            <Chip 
+                              key={productId} 
+                              label={product ? product.Name : productId} 
+                              size="small" 
+                            />
+                          );
+                        })}
+                      </Box>
+                    )}
+                  >
+                    {loadingProducts ? (
+                      <MenuItem disabled>
+                        <CircularProgress size={20} />
+                      </MenuItem>
+                    ) : (
+                      products.map((product) => (
+                        <MenuItem key={product.Product_ID} value={product.Product_ID}>
+                          <Checkbox checked={formData.products.indexOf(product.Product_ID) > -1} />
+                          <ListItemText primary={product.Name} secondary={`SKU: ${product.SKU || 'N/A'}`} />
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                </FormControl>
               </Grid>
               
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleChange}
-                  multiline
-                  rows={4}
-                  placeholder="Any additional information about this supplier"
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
-                  <Button 
-                    variant="outlined" 
-                    onClick={() => navigate('/suppliers')}
-                    disabled={loading}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    variant="contained" 
-                    color="primary"
-                    disabled={loading}
-                  >
-                    {loading ? <CircularProgress size={24} /> : isEditMode ? 'Update Supplier' : 'Add Supplier'}
-                  </Button>
-                </Box>
+              <Grid item xs={12} className="form-actions">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  type="submit"
+                  disabled={loading}
+                  className="submit-button"
+                >
+                  {loading ? 'Saving...' : isEditing ? 'Update Supplier' : 'Create Supplier'}
+                </Button>
+                
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  onClick={() => navigate('/suppliers')}
+                  className="cancel-button"
+                >
+                  Cancel
+                </Button>
               </Grid>
             </Grid>
           </form>
         )}
-      </Box>
-    </Paper>
+      </Paper>
+    </Container>
   );
 };
 

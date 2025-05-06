@@ -18,6 +18,7 @@ import {
   Add as AddIcon,
   SwapHoriz as SwapHorizIcon,
   Info as InfoIcon,
+  Category as ProductsIcon, // Added ProductsIcon
 } from '@mui/icons-material';
 import LineChartComponent from '../../components/common/LineChartComponent';
 import ControlCenter from './ControlCenter';
@@ -27,6 +28,7 @@ import FinancialDashboard from '../Financial/FinancialDashboard';
 import CustomerManagement from '../Customers/CustomerManagement';
 import InventoryManagement from '../Inventory/InventoryManagement';
 import ReturnsList from '../Returns/ReturnsList';
+import ProductsPage from '../Products/ProductsPage'; // Import the existing ProductsPage component
 
 const DashboardOverview = ({ stats }) => {
   return (
@@ -345,6 +347,8 @@ const OwnerDashboardPage = () => {
         return <FinancialDashboard />;
       case 'inventory':
         return <InventoryManagement />;
+      case 'products':  // Add products case
+        return <ProductsPage />;
       case 'orders':
         return <div className="p-6"><h2 className="text-xl font-bold mb-4">Orders Management</h2><p>Orders management component would be displayed here</p></div>;
       case 'customers':
@@ -414,6 +418,15 @@ const OwnerDashboardPage = () => {
             >
               <PackageIcon fontSize="small" />
               <span>Inventory</span>
+            </button>
+            
+            {/* Add Products Management button */}
+            <button 
+              className={`tab-button ${activeTab === 'products' ? 'active' : ''}`}
+              onClick={() => handleTabChange('products')}
+            >
+              <ProductsIcon fontSize="small" />
+              <span>Products</span>
             </button>
             
             <button 

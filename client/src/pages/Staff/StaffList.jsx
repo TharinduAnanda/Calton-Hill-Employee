@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Box, 
   Button, 
@@ -17,7 +17,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions
+  DialogActions,
+  Chip
 } from '@mui/material';
 import { 
   Edit as EditIcon,
@@ -37,22 +38,37 @@ function fetchStaffMembers(setStaffMembers, setLoading, setError) {
   
   getAllStaff()
     .then(response => {
-      const staffData = response.data || [];
-      console.log('Staff data:', staffData); // Debugging
-      setStaffMembers(Array.isArray(staffData) ? staffData : []);
-      setError(null);
+      // Log the full response for debugging
+      console.log('Staff API response:', response);
+      
+      // Check if we have the expected structure
+      if (response) {
+        // Handle different response structures
+        let staffData = [];
+        if (response.data && response.data.staff) {
+          // Format: { data: { staff: [...] } }
+          staffData = response.data.staff;
+        } else if (response.data && Array.isArray(response.data)) {
+          // Format: { data: [...] }
+          staffData = response.data;
+        } else if (Array.isArray(response)) {
+          // Format: [...]
+          staffData = response;
+        }
+        
+        console.log('Extracted staff data:', staffData);
+        setStaffMembers(staffData);
+        setError(null);
+      } else {
+        console.warn('Empty response from server');
+        setStaffMembers([]);
+        setError('No data received from server');
+      }
     })
     .catch(err => {
       console.error('Error fetching staff:', err);
-      // Check if this is the "No staff found" error
-      if (err.message === 'No staff found for this owner') {
-        // This is not a true error - just means empty list
-        setStaffMembers([]);
-        setError(null);
-      } else {
-        // This is a real error
-        setError('Failed to fetch staff members');
-      }
+      setStaffMembers([]);
+      setError('Failed to fetch staff members: ' + err.message);
     })
     .finally(() => {
       setLoading(false);
@@ -65,8 +81,10 @@ function fetchStaffMembers(setStaffMembers, setLoading, setError) {
  * @param {Function} props.onStaffSelect - Handler for staff selection
  * @param {boolean} props.refreshTrigger - Trigger to refresh staff list
  * @param {Function} props.onDeleteStaff - Handler for staff deletion
+ * @param {string} props.roleFilter - Filter staff by role
+ * @param {Function} props.roleSortFunction - Function to sort staff by role seniority
  */
-function StaffList({ onStaffSelect, refreshTrigger, onDeleteStaff }) {
+function StaffList({ onStaffSelect, refreshTrigger, onDeleteStaff, roleFilter = 'all', roleSortFunction }) {
   const [staffMembers, setStaffMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -77,6 +95,27 @@ function StaffList({ onStaffSelect, refreshTrigger, onDeleteStaff }) {
   useEffect(() => {
     fetchStaffMembers(setStaffMembers, setLoading, setError);
   }, [refreshTrigger]); 
+
+  // Filter and sort staff by role
+  const filteredStaff = useMemo(() => {
+    // First filter by role if needed
+    const filtered = roleFilter === 'all' 
+      ? [...staffMembers]
+      : staffMembers.filter(staff => 
+          (staff.role || staff.Role || '').toLowerCase() === roleFilter.toLowerCase()
+        );
+    
+    // Then sort by role seniority if showing all roles and roleSortFunction exists
+    if (roleFilter === 'all' && typeof roleSortFunction === 'function') {
+      return filtered.sort((a, b) => {
+        const roleA = a.role || a.Role || 'staff';
+        const roleB = b.role || b.Role || 'staff';
+        return roleSortFunction(roleB) - roleSortFunction(roleA); // Higher priority first
+      });
+    }
+    
+    return filtered;
+  }, [staffMembers, roleFilter, roleSortFunction]);
 
   /**
    * Opens delete confirmation dialog
@@ -108,6 +147,23 @@ function StaffList({ onStaffSelect, refreshTrigger, onDeleteStaff }) {
     setStaffToDelete(null);
   }
 
+  /**
+   * Get style for role badge
+   * @param {string} role - Role of the staff member
+   * @returns {Object} - Style object for the badge
+   */
+  function getRoleBadgeStyle(role) {
+    switch (role?.toLowerCase()) {
+      
+      case 'manager':
+        return { bgcolor: '#2196f3', color: 'white' };
+      case 'staff':
+        return { bgcolor: '#4caf50', color: 'white' };
+      default:
+        return { bgcolor: '#757575', color: 'white' };
+    }
+  }
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
@@ -132,24 +188,35 @@ function StaffList({ onStaffSelect, refreshTrigger, onDeleteStaff }) {
             <TableRow>
               <TableCell>Name</TableCell>
               <TableCell>Email</TableCell>
+              <TableCell>Phone</TableCell>
               <TableCell>Role</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {staffMembers.length > 0 ? (
-              staffMembers.map((staff) => (
+            {filteredStaff.length > 0 ? (
+              filteredStaff.map((staff) => (
                 <TableRow key={staff.staff_id || staff.id || staff._id}>
                   <TableCell>
                     {staff.name || `${staff.first_name || staff.First_Name} ${staff.last_name || staff.Last_Name}`}
                   </TableCell>
                   <TableCell>{staff.email || staff.Email}</TableCell>
-                  <TableCell>{staff.role || staff.Role}</TableCell>
+                  <TableCell>{staff.phone_number || staff.Phone_Number || '-'}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={staff.role || staff.Role} 
+                      size="small"
+                      sx={getRoleBadgeStyle(staff.role || staff.Role)}
+                    />
+                  </TableCell>
                   <TableCell>
                     <Tooltip title="Edit Staff">
                       <IconButton 
                         size="small" 
-                        onClick={() => onStaffSelect(staff)}
+                        onClick={() => {
+                          console.log('Editing staff member:', staff);
+                          onStaffSelect(staff);
+                        }}
                         color="primary"
                       >
                         <EditIcon fontSize="small" />
@@ -171,8 +238,11 @@ function StaffList({ onStaffSelect, refreshTrigger, onDeleteStaff }) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} align="center">
-                  No staff members found
+                <TableCell colSpan={5} align="center">
+                  {staffMembers.length > 0 ? 
+                    `No staff members found with role: ${roleFilter}` :
+                    'No staff members found'
+                  }
                 </TableCell>
               </TableRow>
             )}
@@ -207,7 +277,9 @@ function StaffList({ onStaffSelect, refreshTrigger, onDeleteStaff }) {
 StaffList.propTypes = {
   onStaffSelect: PropTypes.func.isRequired,
   refreshTrigger: PropTypes.oneOfType([PropTypes.bool, PropTypes.number]),
-  onDeleteStaff: PropTypes.func
+  onDeleteStaff: PropTypes.func,
+  roleFilter: PropTypes.string,
+  roleSortFunction: PropTypes.func
 };
 
 export default StaffList;

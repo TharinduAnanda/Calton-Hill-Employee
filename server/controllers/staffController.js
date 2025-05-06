@@ -10,26 +10,72 @@ const jwt = require('jsonwebtoken');
  * @param {object} res - Express response
  */
 function getAllStaff(req, res) {
-  const ownerId = req.user.owner_id || req.user.id;
+  // Better logging of the user object
+  console.log('Current req.user:', JSON.stringify(req.user, null, 2));
+  
+  // Get the owner ID with more backup options
+  const ownerId = req.user?.userId || req.user?.id || req.user?.owner_id || req.user?.Owner_ID;
+  
+  console.log('Getting all staff with owner ID:', ownerId);
+  
+  // Return early if no owner ID
+  if (!ownerId) {
+    console.warn('No owner ID found in request; returning empty staff list');
+    return res.json({
+      success: true,
+      message: 'No owner ID provided',
+      data: { staff: [], total: 0 }, // Modified to match expected format
+      page: 1,
+      limit: 10
+    });
+  }
+  
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
   
-  staffModel.findAllByOwner(ownerId, limit, offset)
+  // Add a debug query to check if staff exists regardless of owner
+  executeQuery('SELECT COUNT(*) as count, MIN(Owner_ID) as sample_owner FROM staff')
     .then(result => {
-      res.json({
-        success: true,
-        message: 'Staff retrieved successfully',
-        data: {
-          staff: result.staff,
-          total: result.total
-        },
-        pagination: {
+      console.log('Total staff in database:', result[0].count);
+      console.log('Sample owner ID:', result[0].sample_owner);
+    })
+    .catch(err => console.error('Error checking staff count:', err));
+
+  // Get count of staff for pagination
+  executeQuery('SELECT COUNT(*) as total FROM staff WHERE Owner_ID = ?', [ownerId])
+    .then(countResult => {
+      const total = countResult[0].total;
+      
+      // Direct simple query to get staff data
+      return executeQuery(
+        `SELECT 
+          Staff_ID as staff_id,
+          First_Name as first_name,
+          Last_Name as last_name, 
+          Email as email,
+          Phone_Number as phone_number,
+          role,
+          status,
+          created_at
+        FROM staff 
+        WHERE Owner_ID = ? AND status != 'deleted'
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?`,
+        [ownerId, limit, offset]
+      )
+      .then(staff => {
+        console.log(`Direct query found ${staff.length} staff members`);
+        
+        res.json({
+          success: true,
+          data: { 
+            staff: staff,
+            total: total
+          },
           page,
-          limit,
-          total: result.total,
-          pages: Math.ceil(result.total / limit)
-        }
+          limit
+        });
       });
     })
     .catch(error => {
@@ -49,7 +95,7 @@ function getAllStaff(req, res) {
  */
 function getStaffById(req, res) {
   const { staffId } = req.params;
-  const ownerId = req.user.owner_id || req.user.id;
+  const ownerId = req.user.userId || req.user.id || req.user.owner_id;
   
   // First check if staff belongs to this owner
   executeQuery(
@@ -124,7 +170,7 @@ function createStaff(req, res) {
   // Prepare staff data
   const staffData = {
     ...req.body,
-    owner_id: req.user.id || req.user.userId
+    owner_id: req.user.userId || req.user.id || req.user.owner_id
   };
   
   // Create staff member
@@ -155,7 +201,7 @@ function createStaff(req, res) {
  */
 function updateStaff(req, res) {
   const { staffId } = req.params;
-  const ownerId = req.user.owner_id || req.user.id;
+  const ownerId = req.user.userId || req.user.id || req.user.owner_id;
   
   // Validate input
   const { valid, errors } = validateStaffData(req.body, true);
@@ -216,7 +262,7 @@ function updateStaff(req, res) {
  */
 function deleteStaff(req, res) {
   const { staffId } = req.params;
-  const ownerId = req.user.owner_id || req.user.id;
+  const ownerId = req.user.userId || req.user.id || req.user.owner_id;
   
   // First check if staff belongs to this owner
   executeQuery(

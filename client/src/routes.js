@@ -20,6 +20,7 @@ import FinancialDashboard from './pages/Financial/FinancialDashboard';
 import CustomerManagement from './pages/Customers/CustomerManagement'; // Add this import
 // import CustomerList from './pages/Customers/CustomerList';
 import CustomerDetails from './pages/Customers/CustomerDetails';
+import DashboardRedirect from './components/common/DashboardRedirect';
 import InventoryManagement from './pages/Inventory/InventoryManagement';
 import LowStockItems from './pages/Inventory/LowStockItems';
 import BatchManagement from './pages/Inventory/BatchManagement';
@@ -32,12 +33,15 @@ import ReturnsList from './pages/Returns/ReturnsList';
 import NotFound from './components/common/NotFound';
 import Unauthorized from './components/common/Unauthorized';
 
-/**
- * Routes configuration object
- * Each route defines a path, component, and permissions
- */
+// Add these imports at the top of the file
+import SuppliersPage from './pages/Suppliers/SuppliersPage';
+import SupplierForm from './pages/Suppliers/SupplierForm';
+
+// Add this import for ProductsPage
+import ProductsPage from './pages/Products/ProductsPage';
+
+// Example check
 const routes = [
-  // Auth routes
   {
     path: '/',
     component: UserTypeSelection,
@@ -65,12 +69,12 @@ const routes = [
   
   // Dashboard routes
   {
-    path: '/dashboard',
-    component: null, // This will be handled by the DashboardRedirect component
-    exact: true,
-    protected: true,
-    allowedRoles: ['owner', 'manager', 'staff']
-  },
+  path: '/dashboard',
+  component: DashboardRedirect,
+  exact: true,
+  protected: true,
+  allowedRoles: ['owner', 'manager', 'staff']
+},
   {
     path: '/owner/dashboard',
     component: OwnerDashboardPage,
@@ -88,12 +92,12 @@ const routes = [
 
   // Customer management routes
    {
-    path: '/owner/customers',
-    component: <CustomerManagement />,
-    exact: true, 
-    protected: true,
-    allowedRoles: ['owner']
-  },
+  path: '/owner/customers',
+  component: CustomerManagement, // CORRECT: Component reference
+  exact: true, 
+  protected: true,
+  allowedRoles: ['owner']
+},
   // {
   //   path: '/customers',
   //   component: <CustomerList />,
@@ -102,12 +106,12 @@ const routes = [
   //   allowedRoles: ['owner', 'manager', 'staff']
   // },
   {
-    path: '/customers/:id',
-    component: <CustomerDetails />,
-    exact: true,
-    protected: true,
-    allowedRoles: ['owner', 'manager', 'staff']
-  },
+  path: '/customers/:id',
+  component: CustomerDetails, // CORRECT: Component reference
+  exact: true,
+  protected: true,
+  allowedRoles: ['owner', 'manager', 'staff']
+},
   
   // Staff management routes
   {
@@ -185,16 +189,8 @@ const routes = [
   
   // Product routes
   {
-    path: '/products',
-    component: ProductList,
-    exact: true,
-    protected: true,
-    allowedRoles: ['owner', 'manager', 'staff']
-  },
-  {
-    path: '/products/:id',
-    component: ProductDetails,
-    exact: true,
+    path: '/products/*',  // <-- Add wildcard to match all sub-paths
+    component: ProductsPage,
     protected: true,
     allowedRoles: ['owner', 'manager', 'staff']
   },
@@ -202,15 +198,25 @@ const routes = [
   // Supplier routes
   {
     path: '/suppliers',
-    component: SupplierList,
-    exact: true,
+    component: SuppliersPage,
     protected: true,
-    allowedRoles: ['owner', 'manager']
+    allowedRoles: ['owner', 'manager', 'staff']
   },
   {
     path: '/suppliers/:id',
     component: SupplierDetail,
-    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager', 'staff']
+  },
+  {
+    path: '/suppliers/add',
+    component: SupplierForm,
+    protected: true,
+    allowedRoles: ['owner', 'manager']
+  },
+  {
+    path: '/suppliers/edit/:id',
+    component: SupplierForm,
     protected: true,
     allowedRoles: ['owner', 'manager']
   },
@@ -276,5 +282,12 @@ const routes = [
     protected: false
   }
 ];
+
+// Add this validation
+routes.forEach(route => {
+  if (!route.component) {
+    console.error(`Route configuration error: ${route.path} has no component defined`);
+  }
+});
 
 export default routes;

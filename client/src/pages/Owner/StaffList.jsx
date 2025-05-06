@@ -1,8 +1,30 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import PropTypes from 'prop-types';
 import './StaffList.css';
 
-const StaffList = ({ staff = [], onEdit, onDelete }) => {
-  if (!staff || staff.length === 0) {
+function StaffList({ staffMembers = [], onStaffSelect, refreshTrigger, onDeleteStaff, roleFilter = 'all', roleSortFunction }) {
+  // Add sorting to the filtered staff
+  const sortedAndFilteredStaff = useMemo(() => {
+    // First filter by role if needed
+    const filtered = roleFilter === 'all' 
+      ? [...staffMembers]
+      : staffMembers.filter(staff => 
+          (staff.role || staff.Role || '').toLowerCase() === roleFilter.toLowerCase()
+        );
+    
+    // Then sort by role seniority if showing all roles
+    if (roleFilter === 'all' && roleSortFunction) {
+      return filtered.sort((a, b) => {
+        const roleA = a.role || a.Role || 'staff';
+        const roleB = b.role || b.Role || 'staff';
+        return roleSortFunction(roleB) - roleSortFunction(roleA);
+      });
+    }
+    
+    return filtered;
+  }, [staffMembers, roleFilter, roleSortFunction]);
+
+  if (!sortedAndFilteredStaff || sortedAndFilteredStaff.length === 0) {
     return <div className="no-staff-message">No staff members found</div>;
   }
 
@@ -18,7 +40,7 @@ const StaffList = ({ staff = [], onEdit, onDelete }) => {
           </tr>
         </thead>
         <tbody>
-          {staff.map((staffMember) => (
+          {sortedAndFilteredStaff.map((staffMember) => (
             <tr key={staffMember.staff_id}>
               <td>{staffMember.name}</td>
               <td>{staffMember.email}</td>
@@ -27,13 +49,13 @@ const StaffList = ({ staff = [], onEdit, onDelete }) => {
                 <div className="action-buttons">
                   <button 
                     className="edit-button"
-                    onClick={() => onEdit(staffMember)}
+                    onClick={() => onStaffSelect(staffMember)}
                   >
                     Edit
                   </button>
                   <button 
                     className="delete-button"
-                    onClick={() => onDelete(staffMember)}
+                    onClick={() => onDeleteStaff(staffMember)}
                   >
                     Delete
                   </button>
@@ -45,6 +67,16 @@ const StaffList = ({ staff = [], onEdit, onDelete }) => {
       </table>
     </div>
   );
+}
+
+// Update propTypes
+StaffList.propTypes = {
+  staffMembers: PropTypes.array,
+  onStaffSelect: PropTypes.func.isRequired,
+  refreshTrigger: PropTypes.oneOfType([PropTypes.bool, PropTypes.number]),
+  onDeleteStaff: PropTypes.func,
+  roleFilter: PropTypes.string,
+  roleSortFunction: PropTypes.func
 };
 
 export default StaffList;

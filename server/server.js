@@ -4,9 +4,10 @@ const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
 const path = require('path');
-const { checkConnection } = require('./config/db');  // Changed from testConnection to checkConnection
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
+const mysql = require('mysql2/promise');
+const config = require('./config/config');
 
 // Load environment variables
 dotenv.config();
@@ -49,7 +50,7 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/customers', customerRoutes);
-app.use('/api/inventory', inventoryRoutes); // Add this to your app.use statements
+app.use('/api/inventory', require('./routes/inventoryRoutes')); // Make sure this line exists in your app.js or server.js file
 app.use('/api/products', productRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/orders', orderRoutes);
@@ -66,6 +67,11 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Simple test route at root
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'API server is running' });
+});
+
 // Serve static files from React app (production only)
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/build')));
@@ -75,28 +81,43 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Error handling middleware
+app.use((req, res, next) => {
+  res.status(404).json({ success: false, message: 'API endpoint not found' });
+});
+
 app.use((err, req, res, next) => {
-  console.error('Global error handler:', err);
+  console.error('Server error:', err);
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
 
-// 404 handler for undefined routes
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route not found: ${req.originalUrl}`
-  });
-});
+// Function to test database connection
+async function checkConnection() {
+  try {
+    const connection = await mysql.createConnection({
+      host: config.db.host,
+      user: config.db.user,
+      password: config.db.password,
+      database: config.db.database
+    });
+    
+    console.log('Database connection successful');
+    await connection.end();
+    return true;
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    throw error;
+  }
+}
 
 // Function to test database connection and start server
 async function startServer() {
   try {
     // Test database connection
-    const isConnected = await checkConnection();  // Use checkConnection instead of testConnection
+    const isConnected = await checkConnection();
     
     if (!isConnected) {
       throw new Error('Database connection failed');

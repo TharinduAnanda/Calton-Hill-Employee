@@ -29,16 +29,19 @@ const StockMovementHistory = () => {
       try {
         setLoading(true);
         const filters = {
-          type: movementType !== 'all' ? movementType : undefined,
-          startDate: startDate ? startDate.toISOString() : undefined,
-          endDate: endDate ? endDate.toISOString() : undefined,
-          itemName: itemName || undefined
+          type: movementType !== 'all' ? movementType : '',
+          startDate: startDate ? startDate.toISOString() : '',
+          endDate: endDate ? endDate.toISOString() : '',
+          itemName: itemName || ''
         };
+        
         const data = await inventoryService.getStockMovementHistory(filters);
-        setMovements(data);
+        setMovements(Array.isArray(data) ? data : []);
+        setError(null);
       } catch (err) {
         console.error('Error fetching stock movement history:', err);
-        setError('Failed to load stock movement history');
+        setError('Failed to load stock movement history. Please try again or refine your search criteria.');
+        setMovements([]);
       } finally {
         setLoading(false);
       }

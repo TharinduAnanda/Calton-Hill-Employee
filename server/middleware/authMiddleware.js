@@ -35,6 +35,10 @@ function protect(req, res, next) {
       
       // Add user data to request
       req.user = decoded;
+      
+      // Logging user data
+      console.log('User in protect middleware:', req.user);
+      
       next();
     });
   } catch (error) {

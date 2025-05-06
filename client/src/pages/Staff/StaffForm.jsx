@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -20,19 +20,25 @@ import PropTypes from 'prop-types';
  * @param {Function} props.onSubmit - Form submission handler
  */
 function StaffForm({ initialData, onSubmit }) {
-  const isEditMode = Boolean(initialData?.Email);
+  const isEditMode = Boolean(initialData?.Email || initialData?.email);
   
   const [formData, setFormData] = useState({
-    First_Name: initialData?.First_Name || '',
-    Last_Name: initialData?.Last_Name || '',
-    Email: initialData?.Email || '',
-    Phone_Number: initialData?.Phone_Number || '',
-    Role: initialData?.Role || 'staff',
+    First_Name: initialData?.First_Name || initialData?.first_name || '',
+    Last_Name: initialData?.Last_Name || initialData?.last_name || '',
+    Email: initialData?.Email || initialData?.email || '',
+    Phone_Number: initialData?.Phone_Number || initialData?.phone_number || '',
+    Role: initialData?.Role || initialData?.role || 'staff',
     Password: '',
     ConfirmPassword: ''
   });
   
   const [errors, setErrors] = useState({});
+  
+  // Add this useEffect for debugging
+  useEffect(() => {
+    console.log('StaffForm initialData:', initialData);
+    console.log('Is edit mode:', isEditMode);
+  }, [initialData, isEditMode]); // Only run when these values change
   
   /**
    * Handles form field changes
@@ -198,7 +204,7 @@ function StaffForm({ initialData, onSubmit }) {
               >
                 <MenuItem value="staff">Staff</MenuItem>
                 <MenuItem value="manager">Manager</MenuItem>
-                <MenuItem value="owner">Owner</MenuItem>
+                
               </Select>
             </FormControl>
           </Grid>

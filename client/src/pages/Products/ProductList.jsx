@@ -1,220 +1,268 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import productService from '../../services/productService';
-import { FaEdit, FaTrash, FaSearch, FaPlus } from 'react-icons/fa';
+import { 
+  Box, Typography, Button, TextField, Card, CardContent, 
+  CardMedia, CircularProgress, Grid, InputAdornment,
+  FormControl, InputLabel, Select, MenuItem
+} from '@mui/material';
+import { Add as AddIcon, Search as SearchIcon } from '@mui/icons-material';
 
 const ProductList = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('all');
   const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchProducts();
-    fetchCategories();
   }, []);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const data = await productService.getAllProducts();
-      setProducts(data);
-      setError(null);
-    } catch (err) {
-      setError('Failed to fetch products. Please try again later.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const data = await productService.getProductCategories();
-      setCategories(data);
-    } catch (err) {
-      console.error('Error fetching categories:', err);
-    }
-  };
-
-  const handleSearch = async () => {
-    if (!searchTerm.trim()) {
-      fetchProducts();
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      const data = await productService.searchProducts(searchTerm);
-      setProducts(data);
-    } catch (err) {
-      setError('Search failed. Please try again.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCategoryChange = async (e) => {
-    const categoryId = e.target.value;
-    setSelectedCategory(categoryId);
-    
-    try {
-      setLoading(true);
-      if (categoryId) {
-        const data = await productService.getProductsByCategory(categoryId);
-        setProducts(data);
+      console.log('Fetching products...');
+      const response = await productService.getAllProducts();
+      
+      // Debug the response
+      console.log('API Response:', response);
+      
+      // Handle different response structures
+      let productsData;
+      if (Array.isArray(response)) {
+        productsData = response;
+      } else if (response.data) {
+        productsData = Array.isArray(response.data) ? response.data : [];
       } else {
-        fetchProducts();
+        productsData = [];
       }
-    } catch (err) {
-      setError('Failed to filter by category. Please try again.');
-      console.error(err);
+      
+      console.log('Processed products data:', productsData);
+      setProducts(productsData);
+      
+      // Extract unique categories
+      const uniqueCategories = [...new Set(productsData
+        .map(product => product.category || product.Category)
+        .filter(Boolean))];
+      setCategories(uniqueCategories);
+      
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setError('Failed to load products. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        await productService.deleteProduct(id);
-        setProducts(products.filter(product => product.id !== id));
-      } catch (err) {
-        setError('Failed to delete product. Please try again.');
-        console.error(err);
-      }
-    }
+  const handleAddProduct = () => {
+    navigate('/products/add');
   };
 
-  if (loading) return <div className="text-center py-4">Loading products...</div>;
+  const handleProductClick = (id) => {
+    navigate(`/products/${id}`);
+  };
+
+  const getFilteredProducts = () => {
+    return products.filter(product => {
+      const productName = product.name || product.Name || '';
+      const productDesc = product.description || product.Description || '';
+      const productCat = product.category || product.Category || '';
+      
+      const matchesSearch = 
+        productName.toLowerCase().includes(search.toLowerCase()) || 
+        productDesc.toLowerCase().includes(search.toLowerCase());
+        
+      const matchesCategory = category === 'all' || productCat === category;
+      
+      return matchesSearch && matchesCategory;
+    });
+  };
+
+  const filteredProducts = getFilteredProducts();
+
+  // Add this right before the return statement to debug
+  console.log({
+    productsLength: products.length,
+    filteredProductsLength: filteredProducts.length,
+    searchTerm: search,
+    selectedCategory: category,
+    allCategories: categories
+  });
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" height="300px">
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Products</h1>
-        <Link 
-          to="/products/add" 
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center"
+    <Box>
+      <Typography variant="h4" gutterBottom>Products ({products.length})</Typography>
+      
+      {/* Debug information */}
+      <Box sx={{ mb: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+        <Typography variant="subtitle1">Debug Info:</Typography>
+        <Typography variant="body2">Total Products: {products.length}</Typography>
+        <Typography variant="body2">Filtered Products: {filteredProducts.length}</Typography>
+        <Button 
+          variant="outlined" 
+          size="small" 
+          onClick={fetchProducts} 
+          sx={{ mt: 1 }}
         >
-          <FaPlus className="mr-2" /> Add Product
-        </Link>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex-1">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search products..."
-                className="w-full border rounded py-2 px-3 pr-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              />
-              <button 
-                onClick={handleSearch}
-                className="absolute right-2 top-2 text-gray-500 hover:text-gray-700"
-              >
-                <FaSearch />
-              </button>
-            </div>
-          </div>
-          <div className="md:w-1/3">
-            <select
-              className="w-full border rounded py-2 px-3"
-              value={selectedCategory}
-              onChange={handleCategoryChange}
-            >
-              <option value="">All Categories</option>
-              {categories.map(category => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
-
+          Refresh Data
+        </Button>
+      </Box>
+      
+      {/* Simple list display */}
+      <Box sx={{ mb: 3 }}>
         {products.length === 0 ? (
-          <div className="text-center py-4 text-gray-500">
-            No products found. Try a different search or add a new product.
-          </div>
+          <Typography>No products available</Typography>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white">
-              <thead>
-                <tr>
-                  <th className="py-2 px-4 border-b text-left">Product Name</th>
-                  <th className="py-2 px-4 border-b text-left">SKU</th>
-                  <th className="py-2 px-4 border-b text-left">Category</th>
-                  <th className="py-2 px-4 border-b text-right">Price</th>
-                  <th className="py-2 px-4 border-b text-right">Stock</th>
-                  <th className="py-2 px-4 border-b text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50">
-                    <td className="py-2 px-4 border-b">
-                      <Link 
-                        to={`/products/${product.id}`}
-                        className="text-blue-600 hover:underline"
-                      >
-                        {product.name}
-                      </Link>
-                    </td>
-                    <td className="py-2 px-4 border-b">{product.sku}</td>
-                    <td className="py-2 px-4 border-b">{product.category}</td>
-                    <td className="py-2 px-4 border-b text-right">
-                      ${parseFloat(product.price).toFixed(2)}
-                    </td>
-                    <td className="py-2 px-4 border-b text-right">
-                      <span 
-                        className={`${
-                          product.stock_quantity <= product.reorder_level 
-                            ? 'text-red-600 font-medium' 
-                            : ''
-                        }`}
-                      >
-                        {product.stock_quantity}
-                      </span>
-                    </td>
-                    <td className="py-2 px-4 border-b text-center">
-                      <div className="flex justify-center space-x-2">
-                        <Link
-                          to={`/products/edit/${product.id}`}
-                          className="text-blue-500 hover:text-blue-700"
-                          title="Edit"
-                        >
-                          <FaEdit />
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="text-red-500 hover:text-red-700"
-                          title="Delete"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul>
+            {products.map(product => (
+              <li key={product.id || product._id || product.Product_ID}>
+                {product.name || product.Name || 'Unnamed Product'} - 
+                ${product.price || product.Price || 0}
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
-    </div>
+      </Box>
+      
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">Products</Typography>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          startIcon={<AddIcon />}
+          onClick={handleAddProduct}
+        >
+          Add Product
+        </Button>
+      </Box>
+
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          fullWidth
+          placeholder="Search products..."
+          variant="outlined"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ mb: 2 }}
+        />
+
+        {categories.length > 0 && (
+          <FormControl variant="outlined" fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Category</InputLabel>
+            <Select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              label="Category"
+            >
+              <MenuItem value="all">All Categories</MenuItem>
+              {categories.map((cat) => (
+                <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+      </Box>
+
+      {error && (
+        <Box sx={{ p: 2, bgcolor: '#ffebee', borderRadius: 1, mb: 3 }}>
+          <Typography color="error">{error}</Typography>
+        </Box>
+      )}
+
+      {filteredProducts.length === 0 ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 5 }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>No products found</Typography>
+          <Typography variant="body1" color="textSecondary">
+            {products.length === 0 
+              ? "Try adding your first product" 
+              : "Try adjusting your search or filter criteria"}
+          </Typography>
+        </Box>
+      ) : (
+        <Grid container spacing={3}>
+          {filteredProducts.map((product) => {
+            const id = product.id || product._id || product.Product_ID;
+            const name = product.name || product.Name || 'Unnamed Product';
+            const price = product.price || product.Price || 0;
+            const category = product.category || product.Category || 'Uncategorized';
+            const imageUrl = product.image_url || product.imageUrl || product.image || 'https://via.placeholder.com/150';
+            const stockQty = product.stock_quantity || product.quantity || 0;
+            
+            return (
+              <Grid item xs={12} sm={6} md={4} key={id}>
+                <Card 
+                  sx={{ 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%',
+                    cursor: 'pointer',
+                    '&:hover': { boxShadow: 6 }
+                  }}
+                  onClick={() => handleProductClick(id)}
+                >
+                  <CardMedia
+                    component="img"
+                    height="140"
+                    image={imageUrl}
+                    alt={name}
+                    sx={{ objectFit: 'contain', bgcolor: '#f5f5f5' }}
+                  />
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6" component="h2" gutterBottom noWrap>
+                      {name}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary" gutterBottom>
+                      {category}
+                    </Typography>
+                    <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold' }}>
+                      ${Number(price).toFixed(2)}
+                    </Typography>
+                    <Box sx={{ mt: 1, display: 'flex', alignItems: 'center' }}>
+                      <Box 
+                        component="span"
+                        sx={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          mr: 1,
+                          bgcolor: stockQty > 10 ? 'success.main' : stockQty > 0 ? 'warning.main' : 'error.main'
+                        }}
+                      />
+                      <Typography variant="body2">
+                        {stockQty > 10 
+                          ? `In Stock (${stockQty})`
+                          : stockQty > 0
+                            ? `Low Stock (${stockQty})`
+                            : 'Out of Stock'
+                        }
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
+      )}
+    </Box>
   );
 };
 

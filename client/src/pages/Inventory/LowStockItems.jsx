@@ -12,7 +12,7 @@ import inventoryService from '../../services/inventoryService';
 
 const LowStockItems = () => {
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState([]);  // Initialize as an empty array
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(0);
@@ -22,11 +22,18 @@ const LowStockItems = () => {
     const fetchLowStockItems = async () => {
       try {
         setLoading(true);
-        const data = await inventoryService.getLowStockItems();
-        setItems(data);
+        const response = await inventoryService.getLowStockItems();
+        
+        // Ensure we're using the data correctly
+        const data = response?.data?.data || [];
+        
+        // Make sure we're setting an array
+        setItems(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Error fetching low stock items:', err);
         setError('Failed to load low stock items');
+        // Always set items as an array even on error
+        setItems([]);
       } finally {
         setLoading(false);
       }
@@ -74,7 +81,7 @@ const LowStockItems = () => {
     );
   }
 
-  if (items.length === 0) {
+  if (!items || items.length === 0) {
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
         <Typography variant="h6" color="textSecondary">
@@ -83,6 +90,11 @@ const LowStockItems = () => {
       </Box>
     );
   }
+
+  // Check if items is an array before trying to slice it
+  const displayedItems = Array.isArray(items) 
+    ? items.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+    : [];
 
   return (
     <Box>
@@ -113,51 +125,52 @@ const LowStockItems = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {items
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.name}</TableCell>
-                    <TableCell>{item.sku}</TableCell>
-                    <TableCell>{item.category}</TableCell>
-                    <TableCell align="right">
-                      <Chip 
-                        label={item.quantity} 
-                        color={getStockLevelColor(item.quantity, item.reorderThreshold)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="right">{item.reorderThreshold}</TableCell>
-                    <TableCell align="right">
-                      {item.lastReorderDate ? new Date(item.lastReorderDate).toLocaleDateString() : 'N/A'}
-                    </TableCell>
-                    <TableCell align="right">{item.supplier?.name || 'N/A'}</TableCell>
-                    <TableCell>
-                      <IconButton 
-                        size="small"
-                        onClick={() => editItem(item.id)}
-                        title="Edit Item"
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton 
-                        size="small"
-                        onClick={() => reorderItem(item.id)}
-                        title="Reorder Item"
-                        color="primary"
-                      >
-                        <AddShoppingCartIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
+              {displayedItems.map((item) => (
+                <TableRow key={item.Product_ID || item.id}>
+                  <TableCell>{item.Name || item.name}</TableCell>
+                  <TableCell>{item.SKU || item.sku}</TableCell>
+                  <TableCell>{item.Category || item.category}</TableCell>
+                  <TableCell align="right">
+                    <Chip 
+                      label={item.Stock_Level || item.quantity} 
+                      color={getStockLevelColor(
+                        item.Stock_Level || item.quantity, 
+                        item.Reorder_Level || item.reorderThreshold
+                      )}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell align="right">{item.Reorder_Level || item.reorderThreshold}</TableCell>
+                  <TableCell align="right">
+                    {item.lastReorderDate ? new Date(item.lastReorderDate).toLocaleDateString() : 'N/A'}
+                  </TableCell>
+                  <TableCell align="right">{item.supplier?.name || 'N/A'}</TableCell>
+                  <TableCell>
+                    <IconButton 
+                      size="small"
+                      onClick={() => editItem(item.Product_ID || item.id)}
+                      title="Edit Item"
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton 
+                      size="small"
+                      onClick={() => reorderItem(item.Product_ID || item.id)}
+                      title="Reorder Item"
+                      color="primary"
+                    >
+                      <AddShoppingCartIcon fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </TableContainer>
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={items.length}
+          count={Array.isArray(items) ? items.length : 0}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}
