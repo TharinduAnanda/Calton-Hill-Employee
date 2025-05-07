@@ -36,7 +36,10 @@ import {
   Tabs,
   Tab,
   FormControlLabel,
-  Checkbox
+  Checkbox,
+  FormControl,
+  InputLabel,
+  Select
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -82,6 +85,17 @@ const CustomerDetails = ({ id: customerId, isEmbedded = false }) => {
     order_id: '',
     priority: 'MEDIUM'
   });
+  const [openAddPointsDialog, setOpenAddPointsDialog] = useState(false);
+  const [pointsData, setPointsData] = useState({
+    points: 0,
+    source: '',
+    description: ''
+  });
+  const [loyaltyActivity, setLoyaltyActivity] = useState([]);
+  const [customerTier, setCustomerTier] = useState(null);
+  const [loyaltySettings, setLoyaltySettings] = useState({
+    points_value_factor: 0.01
+  });
 
   useEffect(() => {
     fetchCustomerDetails();
@@ -89,40 +103,42 @@ const CustomerDetails = ({ id: customerId, isEmbedded = false }) => {
   }, [id]);
 
   const fetchCustomerDetails = async () => {
-  try {
-    setLoading(true);
-    const response = await instance.get(`/api/customers/${id}`); // Use instance instead of axios
-    setCustomer(response.data.data);
-    
-    // Set edit data
-    const customerData = response.data.data.customer;
-    setEditData({
-      name: customerData.name || '',
-      email: customerData.email || '',
-      phone: customerData.phone || '',
-      address: customerData.address || '',
-      customer_segment: customerData.customer_segment || '',
-      loyalty_points: customerData.loyalty_points || 0,
-      notes: customerData.notes || '',
-      marketing_consent: Boolean(customerData.marketing_consent)
-    });
-    
-    setLoading(false);
-  } catch (err) {
-    setError('Failed to fetch customer details. Please try again.');
-    setLoading(false);
-    console.error('Error fetching customer details:', err);
-  }
-};
+    try {
+      setLoading(true);
+      const response = await instance.get(`/api/customers/${id}`); // Use instance instead of axios
+      setCustomer(response.data.data);
+      
+      // Set edit data
+      const customerData = response.data.data.customer;
+      setEditData({
+        name: customerData.name || '',
+        email: customerData.email || '',
+        phone: customerData.phone || '',
+        address: customerData.address || '',
+        customer_segment: customerData.customer_segment || '',
+        loyalty_points: customerData.loyalty_points || 0,
+        notes: customerData.notes || '',
+        marketing_consent: Boolean(customerData.marketing_consent)
+      });
+      
+      setLoyaltyActivity(response.data.data.loyalty_activity || []);
+      setCustomerTier(response.data.data.customer_tier || null);
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to fetch customer details. Please try again.');
+      setLoading(false);
+      console.error('Error fetching customer details:', err);
+    }
+  };
 
   const fetchCustomerSegments = async () => {
-  try {
-    const response = await instance.get('/api/customers/segments/all'); // Use instance
-    setSegments(response.data.data || []);
-  } catch (err) {
-    console.error('Error fetching customer segments:', err);
-  }
-};
+    try {
+      const response = await instance.get('/api/customers/segments/all'); // Use instance
+      setSegments(response.data.data || []);
+    } catch (err) {
+      console.error('Error fetching customer segments:', err);
+    }
+  };
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -145,15 +161,15 @@ const CustomerDetails = ({ id: customerId, isEmbedded = false }) => {
   };
   
   const handleUpdateCustomer = async () => {
-  try {
-    await instance.patch(`/api/customers/${id}`, editData); // Use instance
-    handleCloseEditDialog();
-    fetchCustomerDetails(); // Refresh data
-  } catch (err) {
-    console.error('Error updating customer:', err);
-    alert('Failed to update customer information.');
-  }
-};
+    try {
+      await instance.patch(`/api/customers/${id}`, editData); // Use instance
+      handleCloseEditDialog();
+      fetchCustomerDetails(); // Refresh data
+    } catch (err) {
+      console.error('Error updating customer:', err);
+      alert('Failed to update customer information.');
+    }
+  };
   
   const handleOpenNewTicketDialog = () => {
     setOpenNewTicketDialog(true);
@@ -178,36 +194,65 @@ const CustomerDetails = ({ id: customerId, isEmbedded = false }) => {
   };
   
   const handleCreateTicket = async () => {
-  try {
-    if (!newTicket.subject || !newTicket.description) {
-      alert('Subject and description are required.');
-      return;
+    try {
+      if (!newTicket.subject || !newTicket.description) {
+        alert('Subject and description are required.');
+        return;
+      }
+      
+      const ticketData = {
+        customer_id: id,
+        subject: newTicket.subject,
+        description: newTicket.description,
+        priority: newTicket.priority
+      };
+      
+      if (newTicket.order_id) {
+        ticketData.order_id = newTicket.order_id;
+      }
+      
+      await instance.post('/api/customers/support/tickets', ticketData); // Use instance
+      handleCloseNewTicketDialog();
+      
+      // If we're on the tickets tab, refresh the tickets
+      if (tabValue === 2) {
+        fetchCustomerDetails();
+      }
+      
+    } catch (err) {
+      console.error('Error creating support ticket:', err);
+      alert('Failed to create support ticket.');
     }
-    
-    const ticketData = {
-      customer_id: id,
-      subject: newTicket.subject,
-      description: newTicket.description,
-      priority: newTicket.priority
-    };
-    
-    if (newTicket.order_id) {
-      ticketData.order_id = newTicket.order_id;
-    }
-    
-    await instance.post('/api/customers/support/tickets', ticketData); // Use instance
-    handleCloseNewTicketDialog();
-    
-    // If we're on the tickets tab, refresh the tickets
-    if (tabValue === 2) {
+  };
+
+  const handlePointsDataChange = (e) => {
+    const { name, value } = e.target;
+    setPointsData({
+      ...pointsData,
+      [name]: value
+    });
+  };
+
+  const handleAddPoints = async () => {
+    try {
+      await instance.post(`/api/customers/${id}/loyalty/points`, pointsData);
+      setOpenAddPointsDialog(false);
       fetchCustomerDetails();
+    } catch (err) {
+      console.error('Error adding loyalty points:', err);
+      alert('Failed to add loyalty points.');
     }
-    
-  } catch (err) {
-    console.error('Error creating support ticket:', err);
-    alert('Failed to create support ticket.');
-  }
-};
+  };
+
+  const handleEnrollInLoyalty = async () => {
+    try {
+      await instance.post(`/api/customers/${id}/loyalty/enroll`);
+      fetchCustomerDetails();
+    } catch (err) {
+      console.error('Error enrolling in loyalty program:', err);
+      alert('Failed to enroll in loyalty program.');
+    }
+  };
 
   if (loading) {
     return (
@@ -355,6 +400,97 @@ const CustomerDetails = ({ id: customerId, isEmbedded = false }) => {
                   />
                 </ListItem>
               </List>
+            </CardContent>
+          </Card>
+
+          {/* Loyalty Program */}
+          <Card sx={{ mt: 2 }}>
+            <CardHeader 
+              title="Loyalty Program" 
+              action={
+                <IconButton onClick={() => setOpenAddPointsDialog(true)}>
+                  <AddIcon />
+                </IconButton>
+              }
+            />
+            <CardContent>
+              {customerData.loyalty_points > 0 ? (
+                <>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Typography variant="subtitle1">Points Balance</Typography>
+                    <Chip 
+                      label={`${customerData.loyalty_points} points`}
+                      color="secondary"
+                      size="medium"
+                    />
+                  </Box>
+                  
+                  {customerTier && (
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                      <Typography variant="subtitle1">Current Tier</Typography>
+                      <Box display="flex" alignItems="center">
+                        {[...Array(Math.min(customerTier.multiplier, 3))].map((_, i) => (
+                          <StarIcon key={i} fontSize="small" color="warning" />
+                        ))}
+                        <Typography variant="body2" sx={{ ml: 1 }}>
+                          {customerTier.name}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+                  
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="subtitle1">Value</Typography>
+                    <Typography variant="body1">
+                      {new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: 'USD'
+                      }).format(customerData.loyalty_points * loyaltySettings.points_value_factor)}
+                    </Typography>
+                  </Box>
+                  
+                  <Divider sx={{ my: 2 }} />
+                  
+                  <Typography variant="subtitle2" gutterBottom>Recent Points Activity</Typography>
+                  {loyaltyActivity.length > 0 ? (
+                    <List dense disablePadding>
+                      {loyaltyActivity.slice(0, 3).map((activity) => (
+                        <ListItem key={activity.id} disablePadding>
+                          <ListItemText
+                            primary={
+                              <Box display="flex" justifyContent="space-between">
+                                <Typography variant="body2">{activity.description}</Typography>
+                                <Typography variant="body2" color={activity.points > 0 ? 'success.main' : 'error.main'}>
+                                  {activity.points > 0 ? '+' : ''}{activity.points}
+                                </Typography>
+                              </Box>
+                            }
+                            secondary={format(new Date(activity.created_at), 'MMM dd, yyyy')}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  ) : (
+                    <Typography variant="body2" color="textSecondary">
+                      No recent activity
+                    </Typography>
+                  )}
+                </>
+              ) : (
+                <Box textAlign="center" py={2}>
+                  <Typography variant="body1" color="textSecondary" gutterBottom>
+                    This customer is not enrolled in the loyalty program yet.
+                  </Typography>
+                  <Button 
+                    variant="contained" 
+                    color="primary"
+                    startIcon={<AddIcon />}
+                    onClick={() => handleEnrollInLoyalty()}
+                  >
+                    Enroll in Loyalty Program
+                  </Button>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>
@@ -756,6 +892,59 @@ const CustomerDetails = ({ id: customerId, isEmbedded = false }) => {
           <Button onClick={handleCloseNewTicketDialog}>Cancel</Button>
           <Button onClick={handleCreateTicket} variant="contained" color="primary">
             Create Ticket
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Points Dialog */}
+      <Dialog open={openAddPointsDialog} onClose={() => setOpenAddPointsDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add Loyalty Points</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Points"
+                name="points"
+                type="number"
+                value={pointsData.points}
+                onChange={handlePointsDataChange}
+                required
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Reason</InputLabel>
+                <Select
+                  name="source"
+                  value={pointsData.source}
+                  onChange={handlePointsDataChange}
+                  label="Reason"
+                >
+                  <MenuItem value="manual_adjustment">Manual Adjustment</MenuItem>
+                  <MenuItem value="purchase_bonus">Purchase Bonus</MenuItem>
+                  <MenuItem value="birthday_gift">Birthday Gift</MenuItem>
+                  <MenuItem value="customer_service">Customer Service</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Description"
+                name="description"
+                value={pointsData.description}
+                onChange={handlePointsDataChange}
+                multiline
+                rows={2}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenAddPointsDialog(false)}>Cancel</Button>
+          <Button onClick={handleAddPoints} variant="contained" color="primary">
+            Add Points
           </Button>
         </DialogActions>
       </Dialog>

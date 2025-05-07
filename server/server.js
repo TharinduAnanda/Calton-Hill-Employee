@@ -1,4 +1,5 @@
 const seedOwner = require('./seedOwner');
+const { seedLoyaltyData } = require('./seedLoyaltyData'); // Import the new function
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -43,6 +44,8 @@ const orderRoutes = require('./routes/orderRoutes');
 const ownerRoutes = require('./routes/ownerRoutes');
 const financialRoutes = require('./routes/financialRoutes'); // Add this to your imports
 const returnRoutes = require('./routes/returnRoutes'); // This should already be in your file, but make sure it's there
+const uploadRoutes = require('./routes/uploadRoutes'); // Add this with your other require statements
+const marketingRoutes = require('./routes/marketingRoutes'); // Add this to your imports
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -57,6 +60,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/owner', ownerRoutes);
 app.use('/api/financial', financialRoutes); // Add this to your routes configuration
 app.use('/api/returns', returnRoutes); // This should already be in your file, but make sure it's there
+app.use('/api/upload', uploadRoutes); // Add this with your other app.use statements
+app.use('/api/marketing', marketingRoutes); // Add this to your routes configuration
 
 // Basic route for API health check
 app.get('/api/health', (req, res) => {
@@ -141,9 +146,9 @@ async function startServer() {
 }
 
 // Start the server
-seedOwner()
+Promise.all([seedOwner(), seedLoyaltyData()]) // Include the new seeding function
   .then(() => startServer())
   .catch(err => {
-    console.error('Owner seeding failed:', err);
+    console.error('Seeding failed:', err);
     process.exit(1);
   });

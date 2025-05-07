@@ -285,6 +285,10 @@ select.form-control {
   margin-bottom: 8px;
 }
 
+.form-section-header:first-of-type {
+  margin-top: 0;
+}
+
 /* Dimensions container */
 .dimensions-container {
   display: flex;
@@ -302,4 +306,45 @@ select.form-control {
 /* Specifications area */
 .specifications-area {
   grid-column: 1 / -1;
+}
+
+/* Classification container */
+.classification-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  border: 1px solid #e0e0e0;
+}
+
+@media (min-width: 768px) {
+  .classification-container {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.category-selection select,
+.subcategory-selection select {
+  font-weight: 500;
+  border-width: 2px;
+}
+
+.category-selection label,
+.subcategory-selection label {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.form-group select[name="category_id"],
+.form-group select[name="subcategory"] {
+  font-weight: 500;
+  border-width: 2px;
+  background-color: #f8fafc;
+}
+
+.form-group select[name="category_id"] {
+  border-color: #3182ce;
 }

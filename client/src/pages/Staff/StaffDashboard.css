@@ -76,7 +76,10 @@
 /* Dashboard containers */
 .dashboard-container {
   background-color: var(--background-main);
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .dashboard-header {
@@ -90,6 +93,7 @@
   top: 0;
   z-index: 1000;
   backdrop-filter: blur(10px);
+  flex-shrink: 0;
 }
 
 .dashboard-title {
@@ -109,6 +113,10 @@
 
 .content-container {
   padding: 1.5rem;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   animation: fadeIn 0.5s ease-out;
 }
 
@@ -285,11 +293,15 @@
   border-radius: var(--border-radius-md);
   margin-bottom: 1.5rem;
   box-shadow: var(--shadow-light);
+  flex-shrink: 0;
+  z-index: 5;
 }
 
 .tab-content {
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   animation: fadeIn 0.4s ease-out;
+  flex: 1;
+  overflow-y: auto;
 }
 
 /* Loading state */

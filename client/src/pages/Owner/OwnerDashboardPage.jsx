@@ -28,7 +28,8 @@ import FinancialDashboard from '../Financial/FinancialDashboard';
 import CustomerManagement from '../Customers/CustomerManagement';
 import InventoryManagement from '../Inventory/InventoryManagement';
 import ReturnsList from '../Returns/ReturnsList';
-import ProductsPage from '../Products/ProductsPage'; // Import the existing ProductsPage component
+import ProductsPage from '../Products/ProductsPage';
+import MarketingDashboard from '../Marketing/MarketingDashboard'; // Import the existing ProductsPage component
 
 const DashboardOverview = ({ stats }) => {
   return (
@@ -358,7 +359,7 @@ const OwnerDashboardPage = () => {
       case 'analytics':
         return <div className="p-6"><h2 className="text-xl font-bold mb-4">Analytics & Reports</h2><p>Analytics and reports component would be displayed here</p></div>;
       case 'marketing':
-        return <div className="p-6"><h2 className="text-xl font-bold mb-4">Marketing Tools</h2><p>Marketing tools component would be displayed here</p></div>;
+        return <MarketingDashboard />;
       case 'settings':
         return <div className="p-6"><h2 className="text-xl font-bold mb-4">Store Settings</h2><p>Store settings component would be displayed here</p></div>;
       case 'account':

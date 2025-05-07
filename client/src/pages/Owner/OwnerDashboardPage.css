@@ -1,16 +1,28 @@
 /* Owner Dashboard Styles */
-.dashboard-container {
-    padding: 40px 30px;
+.dashboard-content {
     width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
+    height: 100vh; /* Full viewport height */
+    background-color: #f7f9fc;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Prevent overall page scroll */
+}
+
+.dashboard-container {
+    flex: 1;
+    padding: 30px 30px 0 30px; /* Remove bottom padding */
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Remove scroll from container */
 }
 
 .dashboard-header {
-    margin-bottom: 40px;
+    margin-bottom: 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .dashboard-title {
@@ -174,10 +186,11 @@
 /* Tabs */
 .tabs-container {
     background-color: white;
-    border-radius: 12px;
-    padding: 16px;
+    border-radius: 12px 12px 0 0;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-    margin-bottom: 30px;
+    margin-bottom: 0;
+    flex-shrink: 0; /* Prevent from shrinking */
+    z-index: 10; /* Keep above content */
 }
 
 .tab-buttons {
@@ -185,7 +198,9 @@
     gap: 8px;
     flex-wrap: wrap;
     border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 16px;
+    padding: 16px;
+    overflow-x: auto; /* Allow horizontal scroll for many tabs */
+    flex-shrink: 0;
 }
 
 .tab-button {
@@ -219,10 +234,11 @@
 
 .tab-content {
     background-color: white;
-    border-radius: 12px;
+    border-radius: 0 0 12px 12px;
     padding: 24px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-    min-height: 400px;
+    flex: 1; /* Take remaining space */
+    overflow-y: auto; /* Enable scrolling inside tab content */
+    margin-bottom: 0; /* Remove bottom margin */
 }
 
 /* Control Center */
@@ -273,12 +289,15 @@
 
 /* Footer */
 .dashboard-footer {
-    margin-top: 40px;
-    padding-top: 20px;
+    margin-top: 0;
+    padding: 15px 0;
     border-top: 1px solid #e2e8f0;
     text-align: center;
     color: #94a3b8;
     font-size: 0.875rem;
+    flex-shrink: 0; /* Prevent from shrinking */
+    background-color: white; /* Match background */
+    z-index: 5; /* Keep above content */
 }
 
 /* Control Center Drawer */
@@ -408,121 +427,28 @@
     background: none;
     border: 1px solid #1e3a8a;
     color: #1e3a8a;
-    border-radius: 999px;
-    padding: 4px 12px;
-    font-size: 0.75rem;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.875rem;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .mark-read-button:hover {
-    background-color: #f0f7ff;
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
 }
 
-.mark-read-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+/* Make specific dashboard tab content scrollable independently */
+.dashboard-overview {
+    height: 100%;
+    overflow-y: auto;
+    padding-right: 8px; /* Add padding for scrollbar */
 }
 
-.icon-button {
-    background: none;
-    border: none;
-    color: #64748b;
-    cursor: pointer;
-    transition: color 0.2s ease;
-}
-
-.icon-button:hover {
-    color: #1e3a8a;
-}
-
-.notification-list {
-    padding: 0 20px;
-}
-
-.notification-item {
-    background-color: white;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 12px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    border-left: 4px solid transparent;
-}
-
-.notification-item.unread {
-    border-left-color: #3b82f6;
-    background-color: #f0f7ff;
-}
-
-.notification-item.warning {
-    border-left-color: #f59e0b;
-}
-
-.notification-item.critical {
-    border-left-color: #ef4444;
-}
-
-.notification-text {
-    font-size: 0.875rem;
-    color: #334155;
-    margin-bottom: 4px;
-}
-
-.notification-time {
-    font-size: 0.75rem;
-    color: #64748b;
-}
-
-/* Responsive Styles */
-@media (max-width: 1024px) {
-    .dashboard-content {
-        padding-left: 240px;
-    }
-}
-
+/* Preserve existing responsive styles at the bottom of the file */
 @media (max-width: 768px) {
-    .dashboard-content {
-        padding-left: 0;
-        padding-top: 64px;
-    }
-
     .dashboard-container {
-        padding: 20px 16px;
-    }
-
-    .tab-buttons {
-        overflow-x: auto;
-        flex-wrap: nowrap;
-        padding-bottom: 8px;
-    }
-
-    .tab-button {
-        min-width: auto;
-        padding: 8px 12px;
-        font-size: 0.8125rem;
-    }
-
-    .control-center-drawer {
-        max-width: 100%;
-    }
-}
-
-@media (max-width: 480px) {
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .dashboard-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-    }
-
-    .control-center-button {
-        align-self: flex-start;
-    }
-
-    .additional-metrics {
-        grid-template-columns: 1fr;
+        padding: 15px 15px 0 15px;
     }
 }

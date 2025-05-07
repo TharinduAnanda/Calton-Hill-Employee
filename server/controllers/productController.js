@@ -32,16 +32,32 @@ const getProductById = async (req, res) => {
 // Create new product
 const createProduct = async (req, res) => {
   try {
-    const { name, category, stockLevel, manufacturer, imageUrl, supplierId, price, imagePublicId } = req.body;
+    const { 
+      name, 
+      sku,
+      description, 
+      category, 
+      stock_level, 
+      manufacturer, 
+      image_url, 
+      supplier_id, 
+      price,
+      image_public_id
+    } = req.body;
     
+    // Validate required fields
+    if (!name || !price) {
+      return res.status(400).json({ message: 'Name and price are required' });
+    }
+
     const result = await executeQuery(
-      productQueries.createProduct,
-      [name, category, stockLevel, manufacturer, imageUrl, supplierId || null, price, imagePublicId || '']
+      'INSERT INTO product (Name, Description, SKU, Category, Stock_Level, Manufacturer, Image_URL, Supplier_ID, Price, image_public_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, description || null, sku || null, category || null, stock_level || 0, manufacturer || null, image_url || null, supplier_id || null, price, image_public_id || null]
     );
     
     if (result.affectedRows === 1) {
       const newProduct = await executeQuery(
-        productQueries.getProductById,
+        'SELECT * FROM product WHERE Product_ID = ?',
         [result.insertId]
       );
       
@@ -62,11 +78,27 @@ const createProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
   try {
     const productId = req.params.id;
-    const { name, category, stockLevel, manufacturer, imageUrl, supplierId, price } = req.body;
+    const { 
+      name, 
+      sku,
+      description, 
+      category, 
+      stock_level, 
+      manufacturer, 
+      image_url, 
+      supplier_id, 
+      price,
+      image_public_id
+    } = req.body;
+    
+    // Validate required fields
+    if (!name || !price) {
+      return res.status(400).json({ message: 'Name and price are required' });
+    }
     
     // Check if product exists
     const products = await executeQuery(
-      productQueries.getProductById,
+      'SELECT * FROM product WHERE Product_ID = ?',
       [productId]
     );
     
@@ -75,13 +107,13 @@ const updateProduct = async (req, res) => {
     }
     
     const result = await executeQuery(
-      'UPDATE product SET Name = ?, Category = ?, Stock_Level = ?, Manufacturer = ?, Image_URL = ?, Supplier_ID = ?, Price = ? WHERE Product_ID = ?',
-      [name, category, stockLevel, manufacturer, imageUrl, supplierId || null, price, productId]
+      'UPDATE product SET Name = ?, Description = ?, SKU = ?, Category = ?, Stock_Level = ?, Manufacturer = ?, Image_URL = ?, Supplier_ID = ?, Price = ?, image_public_id = ? WHERE Product_ID = ?',
+      [name, description || null, sku || null, category || null, stock_level || 0, manufacturer || null, image_url || null, supplier_id || null, price, image_public_id || null, productId]
     );
     
     if (result.affectedRows === 1) {
       const updatedProduct = await executeQuery(
-        productQueries.getProductById,
+        'SELECT * FROM product WHERE Product_ID = ?',
         [productId]
       );
       
@@ -194,7 +226,10 @@ const getProductCategories = async (req, res) => {
     res.status(200).json(categories);
   } catch (error) {
     console.error('Error fetching product categories:', error);
-    res.status(500).json({ message: 'Error fetching product categories' });
+    res.status(500).json({ 
+      message: 'Error fetching product categories', 
+      error: error.message 
+    });
   }
 };
 

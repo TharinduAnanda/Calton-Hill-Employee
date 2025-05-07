@@ -207,12 +207,18 @@ const FinancialDashboard = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
+    <Box sx={{ 
+      p: 3, 
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    }}>
+      <Typography variant="h4" gutterBottom sx={{ flexShrink: 0 }}>
         Financial Dashboard
       </Typography>
       
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 3, flexShrink: 0 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6">Financial Overview</Typography>
           <Box display="flex" gap={2}>
@@ -235,7 +241,9 @@ const FinancialDashboard = () => {
         </Box>
         
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        
+      </Paper>
+      
+      <Box sx={{ flex: 1, overflow: 'auto' }}>
         <Grid container spacing={3}>
           <Grid item xs={12} sm={6} md={3}>
             <Card>
@@ -344,7 +352,7 @@ const FinancialDashboard = () => {
             </Card>
           </Grid>
         </Grid>
-      </Paper>
+      </Box>
 
       {/* Reports Section */}
       <Paper sx={{ p: 2 }}>

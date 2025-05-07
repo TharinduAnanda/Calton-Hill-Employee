@@ -19,6 +19,8 @@ import LowStockItems from './pages/Inventory/LowStockItems';
 import BatchManagement from './pages/Inventory/BatchManagement';
 import StockMovementHistory from './pages/Inventory/StockMovementHistory';
 import ReturnsList from './pages/Returns/ReturnsList';
+import LoyaltyProgram from './pages/Marketing/LoyaltyProgram';
+import CampaignManagement from './pages/Marketing/CampaignManagement';
 
 // Define error components as standalone components
 const UnauthorizedPage = () => (
@@ -286,6 +288,10 @@ const AppContent = () => {
               </ProtectedRoute>
             } 
           />
+          
+          {/* Marketing routes */}
+          <Route path="/marketing/loyalty" element={<LoyaltyProgram />} />
+          <Route path="/marketing/campaigns" element={<CampaignManagement />} />
           
           {/* Error routes - Using direct components instead of referencing the object */}
           <Route path="/unauthorized" element={<UnauthorizedPage />} />

@@ -75,11 +75,25 @@ const getProductCategories = async () => {
     console.error('Error fetching product categories:', error);
     // Return a default set of hardware store categories if API fails
     return [
-      { id: 'tools', name: 'Tools' },
-      { id: 'plumbing', name: 'Plumbing' },
-      { id: 'electrical', name: 'Electrical' },
-      { id: 'hardware', name: 'Hardware' },
-      { id: 'building-materials', name: 'Building Materials' }
+      { id: 'building-materials', name: '🧱 Building & Construction Materials' },
+      { id: 'fasteners', name: '🔩 Fasteners & Fixings' },
+      { id: 'tools', name: '🛠️ Tools & Equipment' },
+      { id: 'plumbing', name: '🔧 Plumbing & Sanitary' },
+      { id: 'electrical', name: '💡 Electrical & Lighting' },
+      { id: 'paints', name: '🎨 Paints & Surface Finishing' },
+      { id: 'doors-windows', name: '🚪 Doors, Windows & Accessories' },
+      { id: 'furniture-fittings', name: '🪑 Furniture & Cabinet Fittings' },
+      { id: 'garden', name: '🌳 Garden & Outdoor' },
+      { id: 'hvac', name: '🔥 Heating, Cooling & Ventilation' },
+      { id: 'safety', name: '🛡️ Safety, Security & Fire Protection' },
+      { id: 'cleaning', name: '🧽 Cleaning & Maintenance' },
+      { id: 'automotive', name: '🚗 Automotive Tools & Supplies' },
+      { id: 'adhesives', name: '🧯 Adhesives, Sealants & Chemicals' },
+      { id: 'glass', name: '🪞 Glass, Acrylic & Mirrors' },
+      { id: 'interior-fixtures', name: '🪟 Blinds, Curtains & Interior Fixtures' },
+      { id: 'storage', name: '📦 Packaging, Storage & Organization' },
+      { id: 'industrial', name: '🧰 Industrial Supplies' },
+      { id: 'miscellaneous', name: '⚙️ Miscellaneous' }
     ];
   }
 };
@@ -89,8 +103,14 @@ const getProductCategories = async () => {
  */
 const createProduct = async (productData) => {
   try {
-    // FormData requires different headers - axios will set these automatically
-    const response = await axios.post(API_URL, productData);
+    // Set up headers for FormData
+    const config = {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    };
+    
+    const response = await axios.post(API_URL, productData, config);
     return response.data;
   } catch (error) {
     console.error('Error creating product:', error);
@@ -103,7 +123,14 @@ const createProduct = async (productData) => {
  */
 const updateProduct = async (id, productData) => {
   try {
-    const response = await axios.put(`${API_URL}/${id}`, productData);
+    // Set up headers for FormData
+    const config = {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    };
+    
+    const response = await axios.put(`${API_URL}/${id}`, productData, config);
     return response.data;
   } catch (error) {
     console.error(`Error updating product #${id}:`, error);
