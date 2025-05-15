@@ -1,5 +1,5 @@
-import React from 'react';
-import {  Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import routes from './routes';
@@ -21,6 +21,8 @@ import StockMovementHistory from './pages/Inventory/StockMovementHistory';
 import ReturnsList from './pages/Returns/ReturnsList';
 import LoyaltyProgram from './pages/Marketing/LoyaltyProgram';
 import CampaignManagement from './pages/Marketing/CampaignManagement';
+import ControlCenter from './pages/Owner/ControlCenter';
+import EmailCampaigns from './pages/Marketing/EmailCampaigns';
 
 // Define error components as standalone components
 const UnauthorizedPage = () => (
@@ -87,6 +89,17 @@ const RouteDebugger = () => {
 const MainLayout = ({ children }) => {
   const { currentUser } = useAuth();
   const location = useLocation();
+  // Create state for notifications at this level
+  const [notifications, setNotifications] = useState([]);
+  const [controlCenterOpen, setControlCenterOpen] = useState(false);
+  
+  // Calculate unread notification count
+  const unreadNotificationCount = notifications.filter(notif => !notif.read).length;
+  
+  // Toggle control center
+  const toggleControlCenter = () => {
+    setControlCenterOpen(!controlCenterOpen);
+  };
   
   // Check if this is an auth page
   const isAuthPage = [
@@ -109,7 +122,10 @@ const MainLayout = ({ children }) => {
   // Use main layout for authenticated pages
   return (
     <div className="app-container">
-      <Navbar />
+      <Navbar 
+        unreadNotificationCount={unreadNotificationCount}
+        onControlCenterToggle={toggleControlCenter}
+      />
       <div className="content-wrapper">
         <Sidebar />
         <main className="main-content">
@@ -292,6 +308,14 @@ const AppContent = () => {
           {/* Marketing routes */}
           <Route path="/marketing/loyalty" element={<LoyaltyProgram />} />
           <Route path="/marketing/campaigns" element={<CampaignManagement />} />
+          <Route 
+            path="/marketing/email-campaigns" 
+            element={
+              <ProtectedRoute allowedRoles={['owner', 'manager', 'staff']}>
+                <EmailCampaigns />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Error routes - Using direct components instead of referencing the object */}
           <Route path="/unauthorized" element={<UnauthorizedPage />} />

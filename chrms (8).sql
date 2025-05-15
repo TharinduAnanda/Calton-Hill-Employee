@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 05, 2025 at 10:09 PM
+-- Generation Time: May 07, 2025 at 07:57 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -46,21 +46,23 @@ CREATE TABLE `customer` (
   `customer_segment` varchar(50) DEFAULT 'GENERAL',
   `notes` text DEFAULT NULL,
   `marketing_consent` tinyint(1) DEFAULT 0,
-  `ADDRESS` text DEFAULT NULL
+  `ADDRESS` text DEFAULT NULL,
+  `redeemed_points` int(11) DEFAULT 0,
+  `last_points_update` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `customer`
 --
 
-INSERT INTO `customer` (`ID`, `NAME`, `EMAIL`, `PHONE_NUM`, `PASSWORD`, `resetToken`, `resetTokenExpiry`, `createdAt`, `updatedAt`, `birthdate`, `gender`, `loyalty_points`, `customer_since`, `last_purchase_date`, `total_spent`, `customer_segment`, `notes`, `marketing_consent`, `ADDRESS`) VALUES
-(1, 'Tharindu Lalanath Ananda', 'tharindulalanath49@gmail.com', '1234567890', '$2b$10$0IYi9qJj0gVI0VToI5p7sewUSZV0Wekq2pVCRScNc7M7uUrAOcK6e', NULL, NULL, '2025-02-25 23:52:37', '2025-02-25 23:52:37', NULL, 'PREFER_NOT_SAY', 0, '2025-05-01', NULL, 0.00, 'GENERAL', NULL, 0, NULL),
-(2, 'Manel Ananda', 'manel@gmail.com', '0712128692', '$2b$10$ppudb7f1S5V4Ztnpb4QZWeEfJdGx.sxqhpgKTe2v4Y76Rd31gauMy', NULL, NULL, '2025-03-04 21:48:13', '2025-03-04 21:48:13', NULL, 'PREFER_NOT_SAY', 0, '2025-05-01', NULL, 0.00, 'GENERAL', NULL, 0, NULL),
-(3, 'Kanishka Ananda', 'anandae-im21040@stu.kln.ac.lk', '0717577400', '$2b$10$1B7fTOK/NeDowX/syrZfPuhxhuhvZAvFEENBgIO0OUVmjEmzCrpnm', NULL, NULL, '2025-03-19 07:11:04', '2025-03-19 07:11:04', NULL, 'PREFER_NOT_SAY', 0, '2025-05-01', NULL, 0.00, 'GENERAL', NULL, 0, NULL),
-(4, 'Lakshitha Sampath', 'lakshitha@gmail.com', '0717577400', '$2b$10$yE1w9NXTu.lBgR7UJOdok.g7d3LvX5CcPqCdCFGE/8uo/DFx1ozEu', NULL, NULL, '2025-03-25 11:46:38', '2025-03-25 11:46:38', NULL, 'PREFER_NOT_SAY', 0, '2025-05-01', NULL, 0.00, 'GENERAL', NULL, 0, NULL),
-(5, 'dhanuka Wimalarathana', 'dhanuka@gmail.com', '0717577400', '$2b$10$KxqeGQUVird4Bjn1fbo5XuFzHeYRBvJ731f.60MfpuwPmqfyCRuaa', NULL, NULL, '2025-03-25 11:47:47', '2025-03-25 11:47:47', NULL, 'PREFER_NOT_SAY', 0, '2025-05-01', NULL, 0.00, 'GENERAL', NULL, 0, NULL),
-(6, 'Test User', 'test@example.com', '1234567890', '$2b$10$9zRuSHe5PbxNEpcQsRhZi.HSF3n/m6LTvJWtDxBSDVAQbMLyXKfOq', NULL, NULL, '2025-03-26 01:08:10', '2025-03-26 01:08:10', NULL, 'PREFER_NOT_SAY', 0, '2025-05-01', NULL, 0.00, 'GENERAL', NULL, 0, NULL),
-(7, 'kanishka dilhan', 'dilhan@gmail.com', NULL, '$2b$10$OHUKUH/2Rw02kwN.CiMege7A3DCBHvQFopJGDbtq8M32rrcqKi1ne', NULL, NULL, '2025-03-26 01:12:44', '2025-03-26 01:12:44', NULL, 'PREFER_NOT_SAY', 0, '2025-05-01', NULL, 0.00, 'GENERAL', NULL, 0, NULL);
+INSERT INTO `customer` (`ID`, `NAME`, `EMAIL`, `PHONE_NUM`, `PASSWORD`, `resetToken`, `resetTokenExpiry`, `createdAt`, `updatedAt`, `birthdate`, `gender`, `loyalty_points`, `customer_since`, `last_purchase_date`, `total_spent`, `customer_segment`, `notes`, `marketing_consent`, `ADDRESS`, `redeemed_points`, `last_points_update`) VALUES
+(1, 'Tharindu Lalanath Ananda', 'tharindulalanath49@gmail.com', '1234567890', '$2b$10$0IYi9qJj0gVI0VToI5p7sewUSZV0Wekq2pVCRScNc7M7uUrAOcK6e', NULL, NULL, '2025-02-25 23:52:37', '2025-02-25 23:52:37', NULL, 'PREFER_NOT_SAY', 0, '2025-05-01', NULL, 0.00, 'GENERAL', NULL, 0, NULL, 0, NULL),
+(2, 'Manel Ananda', 'manel@gmail.com', '0712128692', '$2b$10$ppudb7f1S5V4Ztnpb4QZWeEfJdGx.sxqhpgKTe2v4Y76Rd31gauMy', NULL, NULL, '2025-03-04 21:48:13', '2025-03-04 21:48:13', NULL, 'PREFER_NOT_SAY', 0, '2025-05-01', NULL, 0.00, 'GENERAL', NULL, 0, NULL, 0, NULL),
+(3, 'Kanishka Ananda', 'anandae-im21040@stu.kln.ac.lk', '0717577400', '$2b$10$1B7fTOK/NeDowX/syrZfPuhxhuhvZAvFEENBgIO0OUVmjEmzCrpnm', NULL, NULL, '2025-03-19 07:11:04', '2025-03-19 07:11:04', NULL, 'PREFER_NOT_SAY', 0, '2025-05-01', NULL, 0.00, 'GENERAL', NULL, 0, NULL, 0, NULL),
+(4, 'Lakshitha Sampath', 'lakshitha@gmail.com', '0717577400', '$2b$10$yE1w9NXTu.lBgR7UJOdok.g7d3LvX5CcPqCdCFGE/8uo/DFx1ozEu', NULL, NULL, '2025-03-25 11:46:38', '2025-03-25 11:46:38', NULL, 'PREFER_NOT_SAY', 0, '2025-05-01', NULL, 0.00, 'GENERAL', NULL, 0, NULL, 0, NULL),
+(5, 'dhanuka Wimalarathana', 'dhanuka@gmail.com', '0717577400', '$2b$10$KxqeGQUVird4Bjn1fbo5XuFzHeYRBvJ731f.60MfpuwPmqfyCRuaa', NULL, NULL, '2025-03-25 11:47:47', '2025-03-25 11:47:47', NULL, 'PREFER_NOT_SAY', 0, '2025-05-01', NULL, 0.00, 'GENERAL', NULL, 0, NULL, 0, NULL),
+(6, 'Test User', 'test@example.com', '1234567890', '$2b$10$9zRuSHe5PbxNEpcQsRhZi.HSF3n/m6LTvJWtDxBSDVAQbMLyXKfOq', NULL, NULL, '2025-03-26 01:08:10', '2025-03-26 01:08:10', NULL, 'PREFER_NOT_SAY', 0, '2025-05-01', NULL, 0.00, 'GENERAL', NULL, 0, NULL, 0, NULL),
+(7, 'kanishka dilhan', 'dilhan@gmail.com', NULL, '$2b$10$OHUKUH/2Rw02kwN.CiMege7A3DCBHvQFopJGDbtq8M32rrcqKi1ne', NULL, NULL, '2025-03-26 01:12:44', '2025-03-26 01:12:44', NULL, 'PREFER_NOT_SAY', 0, '2025-05-01', NULL, 0.00, 'GENERAL', NULL, 0, NULL, 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -110,6 +112,45 @@ CREATE TABLE `customer_segment` (
   `segment_criteria` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `email_campaigns`
+--
+
+CREATE TABLE `email_campaigns` (
+  `id` int(11) NOT NULL,
+  `store_id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `subject` varchar(255) NOT NULL,
+  `content` text NOT NULL,
+  `segment_id` int(11) DEFAULT NULL,
+  `status` enum('DRAFT','SCHEDULED','SENDING','SENT','CANCELLED') DEFAULT 'DRAFT',
+  `scheduled_date` datetime DEFAULT NULL,
+  `sent_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `email_campaign_logs`
+--
+
+CREATE TABLE `email_campaign_logs` (
+  `id` int(11) NOT NULL,
+  `campaign_id` int(11) NOT NULL,
+  `customer_id` int(11) NOT NULL,
+  `sent` tinyint(1) DEFAULT 0,
+  `opened` tinyint(1) DEFAULT 0,
+  `clicked` tinyint(1) DEFAULT 0,
+  `bounced` tinyint(1) DEFAULT 0,
+  `sent_at` timestamp NULL DEFAULT NULL,
+  `opened_at` timestamp NULL DEFAULT NULL,
+  `clicked_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -289,6 +330,64 @@ CREATE TABLE `logistics` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `loyalty_rewards`
+--
+
+CREATE TABLE `loyalty_rewards` (
+  `id` int(11) NOT NULL,
+  `store_id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `points_required` int(11) NOT NULL,
+  `reward_type` enum('discount','fixed','product','shipping') NOT NULL,
+  `reward_value` varchar(255) NOT NULL,
+  `active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `loyalty_settings`
+--
+
+CREATE TABLE `loyalty_settings` (
+  `id` int(11) NOT NULL,
+  `store_id` int(11) NOT NULL,
+  `program_enabled` tinyint(1) DEFAULT 1,
+  `points_per_dollar` decimal(10,2) NOT NULL DEFAULT 1.00,
+  `min_points_redemption` int(11) NOT NULL DEFAULT 100,
+  `points_value_factor` decimal(10,4) NOT NULL DEFAULT 0.0100,
+  `expiry_period_days` int(11) NOT NULL DEFAULT 365,
+  `welcome_bonus` int(11) NOT NULL DEFAULT 100,
+  `birthday_bonus` int(11) NOT NULL DEFAULT 50,
+  `referral_bonus` int(11) NOT NULL DEFAULT 50,
+  `vip_tiers_enabled` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `loyalty_tiers`
+--
+
+CREATE TABLE `loyalty_tiers` (
+  `id` int(11) NOT NULL,
+  `store_id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `points_threshold` int(11) NOT NULL,
+  `benefits` text DEFAULT NULL,
+  `multiplier` decimal(3,1) DEFAULT 1.0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `order_item`
 --
 
@@ -404,7 +503,8 @@ INSERT INTO `product` (`Product_ID`, `Name`, `Description`, `SKU`, `Category`, `
 (7, 'Steel Ladder', NULL, NULL, 'Access Equipment', 10, 'Werner', 'https://res.cloudinary.com/your-cloud/image/upload/v12345/ladder.jpg', NULL, 24999, ''),
 (8, 'Voltage Tester', NULL, NULL, 'Electrical', 20, 'Klein Tools', 'https://res.cloudinary.com/your-cloud/image/upload/v12345/tester.jpg', NULL, 2999, ''),
 (9, 'Toolbox', NULL, NULL, 'Storage', 35, 'Stanley', 'https://res.cloudinary.com/your-cloud/image/upload/v12345/toolbox.jpg', NULL, 5999, ''),
-(10, 'Work Boots', NULL, NULL, 'Safety Gear', 45, 'Timberland PRO', 'https://res.cloudinary.com/your-cloud/image/upload/v12345/boots.jpg', NULL, 7999, '');
+(10, 'Work Boots', NULL, NULL, 'Safety Gear', 45, 'Timberland PRO', 'https://res.cloudinary.com/your-cloud/image/upload/v12345/boots.jpg', NULL, 7999, ''),
+(11, 'Plywood Alostonia', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 700, '');
 
 -- --------------------------------------------------------
 
@@ -484,6 +584,68 @@ INSERT INTO `promotion` (`Promotion_ID`, `Promotion_Name`, `Discount_Rate`, `Sta
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `promotions`
+--
+
+CREATE TABLE `promotions` (
+  `id` int(11) NOT NULL,
+  `store_id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `code` varchar(50) NOT NULL,
+  `type` enum('percentage','fixed','free_shipping','bogo') NOT NULL,
+  `value` decimal(10,2) NOT NULL,
+  `min_purchase` decimal(10,2) DEFAULT 0.00,
+  `max_uses` int(11) DEFAULT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `description` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `promotion_categories`
+--
+
+CREATE TABLE `promotion_categories` (
+  `id` int(11) NOT NULL,
+  `promotion_id` int(11) NOT NULL,
+  `category_id` varchar(50) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `promotion_products`
+--
+
+CREATE TABLE `promotion_products` (
+  `id` int(11) NOT NULL,
+  `promotion_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `promotion_usage`
+--
+
+CREATE TABLE `promotion_usage` (
+  `id` int(11) NOT NULL,
+  `promotion_id` int(11) NOT NULL,
+  `order_id` int(11) NOT NULL,
+  `customer_id` int(11) NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `used_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `sales_transaction`
 --
 
@@ -530,8 +692,10 @@ CREATE TABLE `staff` (
 --
 
 INSERT INTO `staff` (`Staff_ID`, `First_Name`, `Last_Name`, `Phone_Number`, `Address`, `Password`, `Age`, `Gender`, `Email`, `role`, `status`, `Owner_ID`, `created_at`, `updated_at`) VALUES
-(1, 'Kaushalya ', 'Wickramasinghe', '0123456789', NULL, '$2b$12$kQ9fdx85n8QNnGnbw2MhBOKDPIUUxS2MMP4WSloz.XlYU89TkO.le', NULL, NULL, 'gaming123@gmail.com', 'staff', 'active', 2, '2025-04-30 02:15:52', '2025-04-30 02:15:52'),
-(47217, 'kanishka', 'dilhan', '0717577400', NULL, '$2b$12$eNq6cgRdnJxh24..me7dR.JUHpwzIOnHAChUb/zs7YNxA3eMmEYTa', NULL, NULL, 'kanishka@yoursystem.com', 'staff', 'active', 2, '2025-04-30 00:53:26', '2025-04-30 00:53:26');
+(1, 'Kaushalya ', 'Wickramasinghe', '0123456789', NULL, '$2b$12$kQ9fdx85n8QNnGnbw2MhBOKDPIUUxS2MMP4WSloz.XlYU89TkO.le', NULL, NULL, 'gaming123@gmail.com', 'manager', 'active', 2, '2025-04-30 02:15:52', '2025-05-06 19:30:47'),
+(4, 'Lakshitha', 'Sampath', '0711234567', NULL, '$2b$12$6w7FT8tOXT5iEUcvYGjep.iArIMo0oLWQ.VkJ7MeMD8lc7fwFjwji', NULL, NULL, 'lakshitha@gmail.com', 'manager', 'deleted', 2, '2025-05-06 20:18:10', '2025-05-06 20:18:40'),
+(47217, 'kanishka', 'dilhan', '0717577400', NULL, '$2b$12$eNq6cgRdnJxh24..me7dR.JUHpwzIOnHAChUb/zs7YNxA3eMmEYTa', NULL, NULL, 'kanishka@yoursystem.com', 'staff', 'active', 2, '2025-04-30 00:53:26', '2025-04-30 00:53:26'),
+(47218, 'Manel', 'Sooriyaarachchi', '0712128692', NULL, '$2b$12$smiXMcjEz9IhQiQbH11uH.m31aHh7ToOjOkZZGNdMHiF4IbQHkNlK', NULL, NULL, 'manel@gmail.com', 'staff', 'active', 2, '2025-05-06 20:00:58', '2025-05-06 20:00:58');
 
 -- --------------------------------------------------------
 
@@ -589,6 +753,14 @@ CREATE TABLE `supplier` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `supplier`
+--
+
+INSERT INTO `supplier` (`Supplier_ID`, `Name`, `Contact_Person`, `Email`, `Phone_Number`, `Address`, `street`, `city`, `state`, `zipCode`, `country`, `created_at`, `updated_at`) VALUES
+(4, 'Tharindu Lalanath Ananda', 'Tharindu Lalanath Ananda', 'tharindulalanath49@gmail.com', '0123456789', NULL, '100/1', 'rakwana', 'Sabaragamauwa', '70300', 'Sri Lanka', '2025-05-05 20:43:23', '2025-05-05 21:55:07'),
+(5, 'kanishka dilhan', 'kanishka dilhan', 'dilhan@gmail.com', '0717577400', NULL, '100/1', 'rakwana', 'Sabaragamauwa', '70300', 'Sri Lanka', '2025-05-05 21:07:22', '2025-05-05 21:07:22');
+
 -- --------------------------------------------------------
 
 --
@@ -604,6 +776,26 @@ CREATE TABLE `supplier_inventory` (
   `Inventory_ID` int(11) DEFAULT NULL,
   `Product_ID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `supplier_product`
+--
+
+CREATE TABLE `supplier_product` (
+  `id` int(11) NOT NULL,
+  `supplier_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `supplier_product`
+--
+
+INSERT INTO `supplier_product` (`id`, `supplier_id`, `product_id`, `created_at`) VALUES
+(3, 4, 4, '2025-05-05 22:00:55');
 
 -- --------------------------------------------------------
 
@@ -681,6 +873,19 @@ ALTER TABLE `customerorder`
 --
 ALTER TABLE `customer_segment`
   ADD PRIMARY KEY (`segment_id`);
+
+--
+-- Indexes for table `email_campaigns`
+--
+ALTER TABLE `email_campaigns`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `email_campaign_logs`
+--
+ALTER TABLE `email_campaign_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `campaign_id` (`campaign_id`);
 
 --
 -- Indexes for table `expense`
@@ -763,6 +968,25 @@ ALTER TABLE `logistics`
   ADD KEY `logistics_ibfk_2` (`Staff_ID`);
 
 --
+-- Indexes for table `loyalty_rewards`
+--
+ALTER TABLE `loyalty_rewards`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `loyalty_settings`
+--
+ALTER TABLE `loyalty_settings`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `store_id` (`store_id`);
+
+--
+-- Indexes for table `loyalty_tiers`
+--
+ALTER TABLE `loyalty_tiers`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `order_item`
 --
 ALTER TABLE `order_item`
@@ -822,6 +1046,34 @@ ALTER TABLE `promotion`
   ADD KEY `free_product_id` (`free_product_id`);
 
 --
+-- Indexes for table `promotions`
+--
+ALTER TABLE `promotions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `store_id` (`store_id`,`code`);
+
+--
+-- Indexes for table `promotion_categories`
+--
+ALTER TABLE `promotion_categories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `promotion_id` (`promotion_id`,`category_id`);
+
+--
+-- Indexes for table `promotion_products`
+--
+ALTER TABLE `promotion_products`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `promotion_id` (`promotion_id`,`product_id`);
+
+--
+-- Indexes for table `promotion_usage`
+--
+ALTER TABLE `promotion_usage`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `promotion_id` (`promotion_id`);
+
+--
 -- Indexes for table `sales_transaction`
 --
 ALTER TABLE `sales_transaction`
@@ -870,6 +1122,14 @@ ALTER TABLE `supplier_inventory`
   ADD KEY `Product_ID` (`Product_ID`);
 
 --
+-- Indexes for table `supplier_product`
+--
+ALTER TABLE `supplier_product`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_supplier_product` (`supplier_id`,`product_id`),
+  ADD KEY `product_id` (`product_id`);
+
+--
 -- Indexes for table `support_ticket`
 --
 ALTER TABLE `support_ticket`
@@ -912,6 +1172,18 @@ ALTER TABLE `customerorder`
 --
 ALTER TABLE `customer_segment`
   MODIFY `segment_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `email_campaigns`
+--
+ALTER TABLE `email_campaigns`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `email_campaign_logs`
+--
+ALTER TABLE `email_campaign_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `expense`
@@ -974,6 +1246,24 @@ ALTER TABLE `logistics`
   MODIFY `Logistics_ID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `loyalty_rewards`
+--
+ALTER TABLE `loyalty_rewards`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `loyalty_settings`
+--
+ALTER TABLE `loyalty_settings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `loyalty_tiers`
+--
+ALTER TABLE `loyalty_tiers`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `order_item`
 --
 ALTER TABLE `order_item`
@@ -995,7 +1285,7 @@ ALTER TABLE `payment`
 -- AUTO_INCREMENT for table `product`
 --
 ALTER TABLE `product`
-  MODIFY `Product_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `Product_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `product_changes`
@@ -1022,6 +1312,30 @@ ALTER TABLE `promotion`
   MODIFY `Promotion_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
+-- AUTO_INCREMENT for table `promotions`
+--
+ALTER TABLE `promotions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `promotion_categories`
+--
+ALTER TABLE `promotion_categories`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `promotion_products`
+--
+ALTER TABLE `promotion_products`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `promotion_usage`
+--
+ALTER TABLE `promotion_usage`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `sales_transaction`
 --
 ALTER TABLE `sales_transaction`
@@ -1031,7 +1345,7 @@ ALTER TABLE `sales_transaction`
 -- AUTO_INCREMENT for table `staff`
 --
 ALTER TABLE `staff`
-  MODIFY `Staff_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47218;
+  MODIFY `Staff_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47219;
 
 --
 -- AUTO_INCREMENT for table `stock_movement`
@@ -1049,13 +1363,19 @@ ALTER TABLE `store_manager`
 -- AUTO_INCREMENT for table `supplier`
 --
 ALTER TABLE `supplier`
-  MODIFY `Supplier_ID` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `Supplier_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `supplier_inventory`
 --
 ALTER TABLE `supplier_inventory`
   MODIFY `Supplier_Inventory_ID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `supplier_product`
+--
+ALTER TABLE `supplier_product`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `support_ticket`
@@ -1085,6 +1405,12 @@ ALTER TABLE `ticket_message`
 ALTER TABLE `customerorder`
   ADD CONSTRAINT `customerorder_ibfk_1` FOREIGN KEY (`Customer_ID`) REFERENCES `customer` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `customerorder_ibfk_2` FOREIGN KEY (`Staff_ID`) REFERENCES `staff` (`Staff_ID`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
+-- Constraints for table `email_campaign_logs`
+--
+ALTER TABLE `email_campaign_logs`
+  ADD CONSTRAINT `email_campaign_logs_ibfk_1` FOREIGN KEY (`campaign_id`) REFERENCES `email_campaigns` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `expense`
@@ -1183,6 +1509,24 @@ ALTER TABLE `promotion`
   ADD CONSTRAINT `promotion_ibfk_2` FOREIGN KEY (`free_product_id`) REFERENCES `product` (`Product_ID`);
 
 --
+-- Constraints for table `promotion_categories`
+--
+ALTER TABLE `promotion_categories`
+  ADD CONSTRAINT `promotion_categories_ibfk_1` FOREIGN KEY (`promotion_id`) REFERENCES `promotions` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `promotion_products`
+--
+ALTER TABLE `promotion_products`
+  ADD CONSTRAINT `promotion_products_ibfk_1` FOREIGN KEY (`promotion_id`) REFERENCES `promotions` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `promotion_usage`
+--
+ALTER TABLE `promotion_usage`
+  ADD CONSTRAINT `promotion_usage_ibfk_1` FOREIGN KEY (`promotion_id`) REFERENCES `promotions` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `sales_transaction`
 --
 ALTER TABLE `sales_transaction`
@@ -1216,6 +1560,13 @@ ALTER TABLE `supplier_inventory`
   ADD CONSTRAINT `supplier_inventory_ibfk_1` FOREIGN KEY (`Supplier_ID`) REFERENCES `supplier` (`Supplier_ID`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `supplier_inventory_ibfk_2` FOREIGN KEY (`Inventory_ID`) REFERENCES `inventory` (`Inventory_ID`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `supplier_inventory_ibfk_3` FOREIGN KEY (`Product_ID`) REFERENCES `product` (`Product_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `supplier_product`
+--
+ALTER TABLE `supplier_product`
+  ADD CONSTRAINT `supplier_product_ibfk_1` FOREIGN KEY (`supplier_id`) REFERENCES `supplier` (`Supplier_ID`) ON DELETE CASCADE,
+  ADD CONSTRAINT `supplier_product_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `product` (`Product_ID`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `support_ticket`

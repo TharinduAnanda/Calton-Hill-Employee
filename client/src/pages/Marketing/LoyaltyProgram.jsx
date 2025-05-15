@@ -36,10 +36,13 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  FormControl
+  FormControl,
+  Collapse,
+  Badge,
+  Tooltip
 } from '@mui/material';
 import {
-  Card as CardIcon,
+  CardMembership as CardIcon, // Another good option for loyalty program
   Money as MoneyIcon,
   Settings as SettingsIcon,
   Edit as EditIcon,
@@ -51,9 +54,14 @@ import {
   Person as PersonIcon,
   Loyalty as LoyaltyIcon,
   Search as SearchIcon,
-  MoreVert as MoreVertIcon
+  MoreVert as MoreVertIcon,
+  ExpandMore as ExpandMoreIcon,
+  History as HistoryIcon,
+  ToggleOn as ToggleOnIcon,
+  ToggleOff as ToggleOffIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
+import { toast } from 'react-toastify';
 import marketingService from '../../services/marketingService';
 
 const LoyaltyProgram = () => {
@@ -97,6 +105,10 @@ const LoyaltyProgram = () => {
     multiplier: 1
   });
 
+  const [expandedMember, setExpandedMember] = useState(null);
+  const [pointsHistory, setPointsHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   useEffect(() => {
     const fetchLoyaltyData = async () => {
       try {
@@ -108,10 +120,13 @@ const LoyaltyProgram = () => {
           marketingService.getLoyaltyMembers()
         ]);
         
-        setSettings(settingsData);
-        setRewards(rewardsData);
-        setTiers(tiersData);
-        setMembers(membersData);
+        if (settingsData) {
+          setSettings(settingsData);
+        }
+        
+        setRewards(rewardsData || []);
+        setTiers(tiersData || []);
+        setMembers(membersData || []);
         
         setError(null);
       } catch (err) {
@@ -229,6 +244,38 @@ const LoyaltyProgram = () => {
     }
   };
 
+  const handleToggleRewardStatus = async (reward) => {
+    try {
+      setLoading(true);
+      // Create a toast notification
+      const toastId = toast.loading(`${reward.active ? 'Deactivating' : 'Activating'} reward...`);
+      
+      const updatedReward = {
+        ...reward,
+        active: !reward.active
+      };
+      
+      // Call the API to update the reward status
+      const result = await marketingService.updateLoyaltyReward(reward.id, updatedReward);
+      
+      // Update the local state with the updated reward
+      setRewards(prev => prev.map(r => r.id === reward.id ? result.data : r));
+      
+      // Update the toast notification
+      toast.update(toastId, {
+        render: `Reward ${result.data.active ? 'activated' : 'deactivated'} successfully`,
+        type: "success",
+        isLoading: false,
+        autoClose: 3000
+      });
+    } catch (err) {
+      console.error('Error toggling reward status:', err);
+      toast.error(`Failed to update reward status: ${err.message || 'Unknown error'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Tier dialog handlers
   const handleOpenTierDialog = (tier = null) => {
     if (tier) {
@@ -315,6 +362,28 @@ const LoyaltyProgram = () => {
     return sortedTiers.find(tier => points >= tier.points_threshold) || null;
   };
 
+  const handleViewHistory = async (memberId) => {
+    if (expandedMember === memberId) {
+      setExpandedMember(null);
+      return;
+    }
+    
+    try {
+      setLoadingHistory(true);
+      setExpandedMember(memberId);
+      
+      // Fetch real data from API
+      const response = await marketingService.getMemberPointsHistory(memberId);
+      setPointsHistory(response.data || []);
+    } catch (err) {
+      console.error('Error fetching points history:', err);
+      setError('Failed to load points history');
+      setPointsHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   return (
     <Box>
       {error && (
@@ -322,6 +391,49 @@ const LoyaltyProgram = () => {
           {error}
         </Alert>
       )}
+      
+      {/* New Stats Banner with previously unused components */}
+      <Paper sx={{ mb: 3, p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+        <Grid container spacing={3} alignItems="center">
+          <Grid item xs={12} md={4}>
+            <Box display="flex" alignItems="center">
+              {/* <Badge
+                badgeContent="NEW" 
+                color="secondary"
+                sx={{ mr: 2 }}
+              >
+                <CardIcon sx={{ fontSize: 40 }} />
+              </Badge> */}
+              <Box>
+                <Typography variant="h6">Loyalty Program</Typography>
+                <Typography variant="body2">Reward your frequent customers</Typography>
+              </Box>
+            </Box>
+          </Grid>
+          
+          <Grid item xs={12} md={4}>
+            <Box display="flex" alignItems="center">
+              <MoneyIcon sx={{ fontSize: 24, mr: 1 }} />
+              <Typography variant="body1">
+                Point Value: ${settings.points_value_factor} per point
+              </Typography>
+            </Box>
+          </Grid>
+          
+          <Grid item xs={12} md={4}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                <StarBorderIcon sx={{ fontSize: 20, color: 'warning.main' }} />
+                <ExpandMoreIcon sx={{ fontSize: 16 }} />
+                <StarIcon sx={{ fontSize: 24, color: 'warning.main' }} />
+              </Box>
+              <Typography variant="body1">
+                {tiers.length} Active Tier{tiers.length !== 1 ? 's' : ''}
+              </Typography>
+            </Box>
+          </Grid>
+        </Grid>
+      </Paper>
       
       {loading && !settings ? (
         <Box display="flex" justifyContent="center" p={4}>
@@ -570,13 +682,19 @@ const LoyaltyProgram = () => {
                               </Box>
                             </CardContent>
                             <Divider />
-                            <Box p={1} display="flex" alignItems="center" justifyContent="space-between">
-                              <Typography variant="caption" color="textSecondary">
-                                Status:
-                              </Typography>
-                              <Typography variant="caption" color={reward.active ? 'success.main' : 'error.main'}>
+                            <Box p={1} display="flex" justifyContent="space-between" alignItems="center">
+                              <Typography variant="body2" color={reward.active ? 'success.main' : 'error.main'}>
                                 {reward.active ? 'Active' : 'Inactive'}
                               </Typography>
+                              <Tooltip title={reward.active ? "Deactivate reward" : "Activate reward"}>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleToggleRewardStatus(reward)}
+                                  color={reward.active ? "primary" : "default"}
+                                >
+                                  {reward.active ? <ToggleOnIcon /> : <ToggleOffIcon />}
+                                </IconButton>
+                              </Tooltip>
                             </Box>
                           </Card>
                         </Grid>
@@ -737,56 +855,116 @@ const LoyaltyProgram = () => {
                           members.map(member => {
                             const memberTier = getTierForPoints(member.points);
                             return (
-                              <TableRow key={member.id}>
-                                <TableCell>
-                                  <Box display="flex" alignItems="center">
-                                    <Avatar 
-                                      src={member.avatar} 
-                                      alt={member.name}
-                                      sx={{ mr: 2, width: 40, height: 40 }}
-                                    >
-                                      {member.name.charAt(0)}
-                                    </Avatar>
-                                    <Box>
-                                      <Typography variant="body1">{member.name}</Typography>
-                                      <Typography variant="body2" color="textSecondary">
-                                        {member.email}
-                                      </Typography>
-                                    </Box>
-                                  </Box>
-                                </TableCell>
-                                <TableCell align="right">
-                                  <Typography variant="body1">{member.points}</Typography>
-                                </TableCell>
-                                <TableCell>
-                                  {memberTier ? (
+                              <React.Fragment key={member.id}>
+                                <TableRow hover>
+                                  <TableCell>
                                     <Box display="flex" alignItems="center">
-                                      {[...Array(Math.min(memberTier.multiplier, 3))].map((_, i) => (
-                                        <StarIcon key={i} fontSize="small" color="warning" />
-                                      ))}
-                                      <Typography variant="body2" sx={{ ml: 1 }}>
-                                        {memberTier.name}
-                                      </Typography>
+                                      <Avatar 
+                                        src={member.avatar} 
+                                        alt={member.name}
+                                        sx={{ mr: 2, width: 40, height: 40 }}
+                                      >
+                                        {member.name.charAt(0)}
+                                      </Avatar>
+                                      <Box>
+                                        <Typography variant="body1">{member.name}</Typography>
+                                        <Typography variant="body2" color="textSecondary">
+                                          {member.email}
+                                        </Typography>
+                                      </Box>
                                     </Box>
-                                  ) : (
-                                    <Typography variant="body2">Standard</Typography>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {format(new Date(member.joined_date), 'MMM dd, yyyy')}
-                                </TableCell>
-                                <TableCell align="right">
-                                  ${member.total_spent.toFixed(2)}
-                                </TableCell>
-                                <TableCell align="right">
-                                  <IconButton size="small">
-                                    <EditIcon fontSize="small" />
-                                  </IconButton>
-                                  <IconButton size="small">
-                                    <MoreVertIcon fontSize="small" />
-                                  </IconButton>
-                                </TableCell>
-                              </TableRow>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <Typography variant="body1">{member.points}</Typography>
+                                  </TableCell>
+                                  <TableCell>
+                                    {memberTier ? (
+                                      <Box display="flex" alignItems="center">
+                                        {[...Array(Math.min(memberTier.multiplier, 3))].map((_, i) => (
+                                          <StarIcon key={i} fontSize="small" color="warning" />
+                                        ))}
+                                        <Typography variant="body2" sx={{ ml: 1 }}>
+                                          {memberTier.name}
+                                        </Typography>
+                                      </Box>
+                                    ) : (
+                                      <Typography variant="body2">Standard</Typography>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {format(new Date(member.joined_date), 'MMM dd, yyyy')}
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    ${member.total_spent.toFixed(2)}
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <Button
+                                      size="small"
+                                      startIcon={<HistoryIcon />}
+                                      onClick={() => handleViewHistory(member.id)}
+                                      color={expandedMember === member.id ? "primary" : "inherit"}
+                                    >
+                                      History
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                                <TableRow>
+                                  <TableCell colSpan={6} sx={{ py: 0 }}>
+                                    <Collapse in={expandedMember === member.id} timeout="auto" unmountOnExit>
+                                      <Box p={3}>
+                                        <Typography variant="h6" gutterBottom>
+                                          Points History
+                                        </Typography>
+                                        {loadingHistory ? (
+                                          <Box display="flex" justifyContent="center" my={2}>
+                                            <CircularProgress size={24} />
+                                          </Box>
+                                        ) : pointsHistory.length > 0 ? (
+                                          <TableContainer component={Paper} variant="outlined">
+                                            <Table size="small">
+                                              <TableHead>
+                                                <TableRow>
+                                                  <TableCell>Date</TableCell>
+                                                  <TableCell>Type</TableCell>
+                                                  <TableCell>Points</TableCell>
+                                                  <TableCell>Source</TableCell>
+                                                  <TableCell>Description</TableCell>
+                                                </TableRow>
+                                              </TableHead>
+                                              <TableBody>
+                                                {pointsHistory.map((transaction) => (
+                                                  <TableRow key={transaction.id}>
+                                                    <TableCell>
+                                                      {format(new Date(transaction.date), 'MMM dd, yyyy')}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                      {transaction.transaction_type === 'earn' ? (
+                                                        <Typography color="success.main">Earned</Typography>
+                                                      ) : (
+                                                        <Typography color="error.main">Redeemed</Typography>
+                                                      )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                      <Typography color={transaction.transaction_type === 'earn' ? 'success.main' : 'error.main'}>
+                                                        {transaction.transaction_type === 'earn' ? '+' : '-'}
+                                                        {transaction.points}
+                                                      </Typography>
+                                                    </TableCell>
+                                                    <TableCell>{transaction.source}</TableCell>
+                                                    <TableCell>{transaction.description}</TableCell>
+                                                  </TableRow>
+                                                ))}
+                                              </TableBody>
+                                            </Table>
+                                          </TableContainer>
+                                        ) : (
+                                          <Alert severity="info">No point transactions found for this member.</Alert>
+                                        )}
+                                      </Box>
+                                    </Collapse>
+                                  </TableCell>
+                                </TableRow>
+                              </React.Fragment>
                             );
                           })
                         )}

@@ -25,6 +25,13 @@ import InventoryManagement from './pages/Inventory/InventoryManagement';
 import LowStockItems from './pages/Inventory/LowStockItems';
 import BatchManagement from './pages/Inventory/BatchManagement';
 import StockMovementHistory from './pages/Inventory/StockMovementHistory';
+import MarketingDashboard from './pages/Marketing/MarketingDashboard';
+import EmailCampaigns from './pages/Marketing/EmailCampaigns';
+import CampaignManagement from './pages/Marketing/CampaignManagement';
+import LoyaltyProgram from './pages/Marketing/LoyaltyProgram';
+import PromotionsManager from './pages/Marketing/PromotionsManager';
+import MarketingAnalytics from './pages/Marketing/MarketingAnalytics';
+
 
 // Keep only the ReturnsList import:
 import ReturnsList from './pages/Returns/ReturnsList';
@@ -280,7 +287,53 @@ const routes = [
     path: '*',
     component: NotFound,
     protected: false
-  }
+  },
+
+  {
+  path: '/marketing/dashboard',
+  component: MarketingDashboard,
+  exact: true,
+  protected: true,
+  allowedRoles: ['owner', 'manager']
+},
+{
+  path: '/marketing/email',
+  component: EmailCampaigns,
+  exact: true,
+  protected: true,
+  allowedRoles: ['owner', 'manager']
+},
+{
+  path: '/marketing/campaigns',
+  component: CampaignManagement,
+  exact: true,
+  protected: true,
+  allowedRoles: ['owner', 'manager']
+},
+{
+  path: '/marketing/loyalty',
+  component: LoyaltyProgram,
+  exact: true,
+  protected: true,
+  allowedRoles: ['owner', 'manager']
+},
+{
+  path: '/marketing/promotions',
+  component: PromotionsManager,
+  exact: true,
+  protected: true,
+  allowedRoles: ['owner', 'manager']
+},
+
+
+{
+  path: '/marketing/analytics',
+  component: MarketingAnalytics,
+  exact: true,
+  protected: true,
+  allowedRoles: ['owner', 'manager']
+}
+
 ];
 
 // Add this validation

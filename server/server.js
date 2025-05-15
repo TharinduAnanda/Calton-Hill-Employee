@@ -1,5 +1,5 @@
 const seedOwner = require('./seedOwner');
-const { seedLoyaltyData } = require('./seedLoyaltyData'); // Import the new function
+// Import the new function
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -45,7 +45,7 @@ const ownerRoutes = require('./routes/ownerRoutes');
 const financialRoutes = require('./routes/financialRoutes'); // Add this to your imports
 const returnRoutes = require('./routes/returnRoutes'); // This should already be in your file, but make sure it's there
 const uploadRoutes = require('./routes/uploadRoutes'); // Add this with your other require statements
-const marketingRoutes = require('./routes/marketingRoutes'); // Add this to your imports
+const marketingRoutes = require('./routes/marketingRoutes'); // Add this with your other route imports
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -55,13 +55,14 @@ app.use('/api/debug', debugRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/inventory', require('./routes/inventoryRoutes')); // Make sure this line exists in your app.js or server.js file
 app.use('/api/products', productRoutes);
+app.use('/api/products', require('./routes/categoryRoutes')); // Add this line to your server.js file where you register routes
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/owner', ownerRoutes);
 app.use('/api/financial', financialRoutes); // Add this to your routes configuration
 app.use('/api/returns', returnRoutes); // This should already be in your file, but make sure it's there
 app.use('/api/upload', uploadRoutes); // Add this with your other app.use statements
-app.use('/api/marketing', marketingRoutes); // Add this to your routes configuration
+app.use('/api/marketing', marketingRoutes); // Fix the mounting point for marketing routes
 
 // Basic route for API health check
 app.get('/api/health', (req, res) => {
@@ -84,6 +85,42 @@ if (process.env.NODE_ENV === 'production') {
     res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
   });
 }
+
+// Debug route to list all registered routes
+app.get('/api/routes', (req, res) => {
+  const routes = [];
+  app._router.stack.forEach(middleware => {
+    if (middleware.route) {
+      routes.push({
+        path: middleware.route.path,
+        methods: Object.keys(middleware.route.methods)
+      });
+    } else if (middleware.name === 'router') {
+      middleware.handle.stack.forEach(handler => {
+        if (handler.route) {
+          const routePath = handler.route.path;
+          const basePath = middleware.path || '';
+          routes.push({
+            path: `${basePath}${routePath}`,
+            methods: Object.keys(handler.route.methods)
+          });
+        }
+      });
+    }
+  });
+  res.json(routes);
+});
+
+// Direct test route for the single email functionality
+app.post('/api/test/send-single/:id', (req, res) => {
+  console.log('Test route hit:', req.params.id, req.body);
+  res.json({ 
+    success: true, 
+    message: 'Test route hit successfully',
+    params: req.params,
+    body: req.body
+  });
+});
 
 // Error handling middleware
 app.use((req, res, next) => {
@@ -130,6 +167,8 @@ async function startServer() {
     
     console.log('✅ Database connection successful');
     
+    // Call seedLoyaltyData after connecting to the database
+    
     // Start the server
     app.listen(PORT, () => {
       console.log(`
@@ -146,7 +185,7 @@ async function startServer() {
 }
 
 // Start the server
-Promise.all([seedOwner(), seedLoyaltyData()]) // Include the new seeding function
+Promise.all([seedOwner()]) // Include the new seeding function
   .then(() => startServer())
   .catch(err => {
     console.error('Seeding failed:', err);

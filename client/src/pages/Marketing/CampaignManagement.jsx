@@ -37,12 +37,31 @@ const CampaignManagement = () => {
     const fetchCampaigns = async () => {
       try {
         setLoading(true);
-        const data = await marketingService.getCampaigns();
-        setCampaigns(data);
+        const response = await marketingService.getCampaigns();
+        
+        // Enhanced error handling and data normalization
+        let campaignsData;
+        if (response && response.data) {
+          // If API returns { data: [...] } structure
+          campaignsData = Array.isArray(response.data) ? response.data : [];
+        } else if (Array.isArray(response)) {
+          // If API returns direct array
+          campaignsData = response;
+        } else if (response && typeof response === 'object') {
+          // If API returns other object structure, try to extract data
+          campaignsData = Array.isArray(response.campaigns) ? response.campaigns : [];
+        } else {
+          // Fallback to empty array
+          campaignsData = [];
+        }
+        
+        console.log('Campaigns data:', campaignsData);
+        setCampaigns(campaignsData);
         setError(null);
       } catch (err) {
         console.error('Error fetching campaigns:', err);
-        setError('Failed to load campaigns');
+        setCampaigns([]); // Set to empty array on error
+        setError('Failed to load campaigns: ' + (err.message || 'Unknown error'));
       } finally {
         setLoading(false);
       }

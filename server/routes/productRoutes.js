@@ -5,7 +5,8 @@ const { protect } = require('../middleware/authMiddleware');
 
 // IMPORTANT: Place specific routes before parameter routes
 // Categories endpoint must come BEFORE :id routes
-router.get('/categories', productController.getProductCategories);
+// Get all categories
+router.get('/categories', productController.getCategories);
 
 // Standard CRUD routes
 router.get('/', productController.getProducts);

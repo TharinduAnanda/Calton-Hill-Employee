@@ -15,7 +15,8 @@ import {
   TrendingUp as TrendingUpIcon,
   ArrowUpward as ArrowUpIcon,
   ArrowDownward as ArrowDownIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+   
 } from '@mui/icons-material';
 import marketingService from '../../services/marketingService';
 import './MarketingDashboard.css';
@@ -34,7 +35,7 @@ const MarketingDashboard = () => {
       completed: 0,
       totalSent: 0
     },
-    recentActivity: []
+    recentActivity: [] // Ensure this is initialized as an empty array
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -49,7 +50,24 @@ const MarketingDashboard = () => {
     try {
       setLoading(true);
       const data = await marketingService.getMarketingDashboard();
-      setDashboardData(data);
+      
+      // Ensure all expected properties exist in the data
+      setDashboardData({
+        loyalty: {
+          totalMembers: data?.loyalty?.totalMembers || 0,
+          activeRewards: data?.loyalty?.activeRewards || 0,
+          pointsIssued: data?.loyalty?.pointsIssued || 0,
+          pointsRedeemed: data?.loyalty?.pointsRedeemed || 0
+        },
+        campaigns: {
+          active: data?.campaigns?.active || 0,
+          scheduled: data?.campaigns?.scheduled || 0,
+          completed: data?.campaigns?.completed || 0,
+          totalSent: data?.campaigns?.totalSent || 0
+        },
+        recentActivity: Array.isArray(data?.recentActivity) ? data.recentActivity : []
+      });
+      
       setError(null);
     } catch (err) {
       console.error('Error fetching marketing dashboard data:', err);
@@ -104,7 +122,20 @@ const MarketingDashboard = () => {
   );
 
   const renderDashboardOverview = () => {
-    const { loyalty, campaigns } = dashboardData;
+    // Add default values if loyalty or campaigns are undefined
+    const loyalty = dashboardData.loyalty || {
+      totalMembers: 0,
+      activeRewards: 0,
+      pointsIssued: 0,
+      pointsRedeemed: 0
+    };
+    
+    const campaigns = dashboardData.campaigns || {
+      active: 0,
+      scheduled: 0,
+      completed: 0,
+      totalSent: 0
+    };
     
     return (
       <Box sx={{ mt: 3 }} className="dashboard-overview">
@@ -112,7 +143,7 @@ const MarketingDashboard = () => {
         <div className="stats-container">
           <StatCard 
             title="Total Members" 
-            value={loading ? <Skeleton variant="text" height={40} /> : loyalty.totalMembers} 
+            value={loading ? <Skeleton variant="text" height={40} /> : loyalty.totalMembers || 0} 
             icon={<LoyaltyIcon />}
             colorClass="loyalty-stats"
             changeValue={!loading}
@@ -122,7 +153,7 @@ const MarketingDashboard = () => {
           
           <StatCard 
             title="Active Campaigns" 
-            value={loading ? <Skeleton variant="text" height={40} /> : campaigns.active} 
+            value={loading ? <Skeleton variant="text" height={40} /> : campaigns.active || 0} 
             icon={<CampaignIcon />}
             colorClass="campaign-stats"
             changeValue={!loading}
@@ -132,7 +163,7 @@ const MarketingDashboard = () => {
           
           <StatCard 
             title="Points Issued" 
-            value={loading ? <Skeleton variant="text" height={40} /> : loyalty.pointsIssued.toLocaleString()} 
+            value={loading ? <Skeleton variant="text" height={40} /> : (loyalty.pointsIssued || 0).toLocaleString()} 
             icon={<TrendingUpIcon />}
             colorClass="points-stats"
             changeValue={!loading}
@@ -142,7 +173,7 @@ const MarketingDashboard = () => {
           
           <StatCard 
             title="Messages Sent" 
-            value={loading ? <Skeleton variant="text" height={40} /> : campaigns.totalSent.toLocaleString()} 
+            value={loading ? <Skeleton variant="text" height={40} /> : (campaigns.totalSent || 0).toLocaleString()} 
             icon={<EmailIcon />}
             colorClass="email-stats"
             changeValue={!loading}
@@ -195,7 +226,7 @@ const MarketingDashboard = () => {
                         <Skeleton variant="text" height={40} width="80%" sx={{ mx: 'auto' }} />
                       ) : (
                         <Typography variant="h5" sx={{ fontWeight: 500 }}>
-                          {loyalty.pointsRedeemed.toLocaleString()}
+                          {(loyalty.pointsRedeemed || 0).toLocaleString()}
                         </Typography>
                       )}
                       <Typography variant="body2" color="text.secondary">
@@ -211,7 +242,7 @@ const MarketingDashboard = () => {
                     <div 
                       className="progress-bar-inner" 
                       style={{ 
-                        width: `${loading ? 0 : Math.min(Math.round((loyalty.pointsRedeemed / loyalty.pointsIssued) * 100) || 0, 100)}%`,
+                        width: `${loading ? 0 : Math.min(Math.round(((loyalty.pointsRedeemed || 0) / (loyalty.pointsIssued || 1)) * 100) || 0, 100)}%`,
                         background: 'var(--primary-gradient)'
                       }} 
                     />
@@ -221,7 +252,7 @@ const MarketingDashboard = () => {
                       Points Redeemed
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {loading ? '-' : `${Math.round((loyalty.pointsRedeemed / loyalty.pointsIssued) * 100) || 0}%`}
+                      {loading ? '-' : `${Math.round(((loyalty.pointsRedeemed || 0) / (loyalty.pointsIssued || 1)) * 100) || 0}%`}
                     </Typography>
                   </Box>
                 </Box>
@@ -356,7 +387,7 @@ const MarketingDashboard = () => {
                 </Box>
               ))}
             </Box>
-          ) : dashboardData.recentActivity.length > 0 ? (
+          ) : dashboardData.recentActivity && dashboardData.recentActivity.length > 0 ? (
             <List>
               {dashboardData.recentActivity.map((activity, index) => (
                 <ListItem 
@@ -458,6 +489,7 @@ const MarketingDashboard = () => {
               label="Promotions" 
               iconPosition="start"
             />
+            
             <Tab 
               icon={<CampaignIcon />} 
               label="All Campaigns" 
@@ -491,9 +523,7 @@ const MarketingDashboard = () => {
         </Button>
       </Box>
       
-      <div className="dashboard-footer">
-        © {new Date().getFullYear()} Hardware Store - Marketing Dashboard v1.2.0
-      </div>
+      
     </div>
   );
 };

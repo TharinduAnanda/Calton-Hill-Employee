@@ -36,12 +36,11 @@ function protect(req, res, next) {
       // Add user data to request
       req.user = decoded;
       
-      // Logging user data
-      console.log('User in protect middleware:', req.user);
-      
+      // Removed the console.log that was showing user data
       next();
     });
   } catch (error) {
+    // Keep error logging for debugging auth issues
     console.error('Auth middleware error:', error);
     return res.status(500).json({
       success: false,

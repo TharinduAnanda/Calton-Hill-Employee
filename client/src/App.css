@@ -17,6 +17,9 @@
   margin-left: 72px;
   /* Default sidebar width when collapsed */
   transition: margin-left 0.3s ease;
+  padding-top: 60px; /* Height of your navbar */
+  width: 100%;
+  /* Other styles */
 }
 
 /* When sidebar is open */

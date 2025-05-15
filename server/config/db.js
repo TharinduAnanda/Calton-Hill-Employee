@@ -21,10 +21,7 @@ const pool = mysql.createPool({
  */
 async function executeQuery(sql, params = []) {
   try {
-    console.log(`Executing query: ${sql}`);
-    console.log(`With params:`, params);
     const [rows] = await pool.query(sql, params);
-    console.log(`Query successful, returned ${rows?.length || 0} rows`);
     return rows;
   } catch (error) {
     console.error('Database error:', error);
@@ -38,8 +35,7 @@ async function executeQuery(sql, params = []) {
  */
 async function testConnection() {
   try {
-    const [result] = await pool.query('SELECT 1 as test');
-    console.log('Database connection tested successfully');
+    await pool.query('SELECT 1 as test');
     return true;
   } catch (error) {
     console.error('Database connection test failed:', error);

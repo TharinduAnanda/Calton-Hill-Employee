@@ -1,0 +1,245 @@
+/* Main container styling */
+.promotions-manager {
+    padding: 1.5rem;
+}
+
+/* Header section styling */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+}
+
+.action-button {
+    text-transform: none !important;
+}
+
+/* Search field styling */
+.search-field {
+    margin-bottom: 1rem;
+}
+
+/* Tab containers */
+.tabs-container {
+    margin-bottom: 1.5rem;
+}
+
+.main-tabs {
+    border-radius: 4px;
+}
+
+.sub-tabs-container {
+    margin-bottom: 20px;
+    overflow: visible;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.tab-content {
+    padding-top: 0.5rem;
+    min-height: 300px;
+}
+
+/* Empty state styling */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    text-align: center;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+/* Promotions grid styling */
+.promotions-grid {
+    margin-top: 0.5rem;
+}
+
+/* Promotion card styling */
+.promotion-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s ease;
+}
+
+.promotion-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.promotion-card .MuiCardHeader-action {
+    margin-top: 0;
+}
+
+.promotion-card .segment-chip {
+    margin-top: 8px;
+}
+
+.promotion-card .MuiSwitch-root {
+    margin-left: 8px;
+}
+
+.card-content {
+    flex-grow: 1;
+}
+
+.card-actions {
+    display: flex;
+}
+
+.promotion-code {
+    font-family: monospace;
+    font-weight: 600;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+}
+
+.card-footer {
+    padding: 0.5rem 1rem;
+    background-color: #fafafa;
+}
+
+/* Button styling */
+.edit-button:hover {
+    color: #2196f3;
+}
+
+.delete-button:hover {
+    color: #f44336;
+}
+
+.duplicate-button:hover {
+    color: #009688;
+}
+
+.stats-button:hover {
+    color: #673ab7;
+}
+
+.copy-button {
+    margin-left: 0.25rem;
+    padding: 0.125rem;
+}
+
+.copy-button:hover {
+    color: #2196f3;
+    background-color: rgba(33, 150, 243, 0.1);
+    border-radius: 50%;
+}
+
+/* Chip styling */
+.segment-chip {
+    background-color: rgba(103, 58, 183, 0.1);
+    color: #673ab7;
+    margin-top: 0.5rem;
+}
+
+/* Table styling */
+.coupon-table {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.coupon-table th {
+    font-weight: 500;
+    background-color: #f5f5f5;
+}
+
+.coupon-code {
+    font-family: monospace;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    background: #f5f5f5;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+/* Dialog styling */
+.dialog .MuiDialogTitle-root {
+    background-color: #f5f5f5;
+    padding: 16px 24px;
+}
+
+.dialog .MuiDialogContent-root {
+    padding: 24px;
+}
+
+.dialog-actions {
+    padding: 16px;
+    background-color: #fafafa;
+}
+
+.submit-button {
+    min-width: 100px;
+}
+
+/* Status indicators */
+.status-switch {
+    margin-right: 0;
+}
+
+/* Validation alerts */
+.validation-success {
+    background-color: rgba(76, 175, 80, 0.1);
+    color: #2e7d32;
+}
+
+.validation-error {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: #d32f2f;
+}
+
+/* Status chips */
+.MuiChip-colorSuccess {
+    background-color: rgba(76, 175, 80, 0.1);
+    color: #2e7d32;
+}
+
+.MuiChip-colorInfo {
+    background-color: rgba(33, 150, 243, 0.1);
+    color: #0288d1;
+}
+
+.MuiChip-colorError {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: #d32f2f;
+}
+
+/* Add a light green background for active promotions status bar */
+.MuiBox-root.success-50 {
+    background-color: rgba(76, 175, 80, 0.08);
+}
+
+/* Responsive styling */
+@media (max-width: 600px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .actions {
+        margin-top: 1rem;
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .action-button {
+        width: 48%;
+    }
+}

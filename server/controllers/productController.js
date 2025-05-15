@@ -233,6 +233,30 @@ const getProductCategories = async (req, res) => {
   }
 };
 
+/**
+ * Get all product categories
+ */
+const getCategories = async (req, res) => {
+  try {
+    const storeId = req.user?.storeId || 1;
+    const categories = await executeQuery(
+      'SELECT DISTINCT Category as name, LOWER(REPLACE(Category, \' \', \'-\')) as id FROM product WHERE Category IS NOT NULL AND Category != \'\' ORDER BY Category'
+    );
+    
+    res.status(200).json({
+      success: true,
+      data: categories
+    });
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch categories',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   getProducts,
   getProductById,
@@ -241,5 +265,6 @@ module.exports = {
   deleteProduct,
   searchProducts,
   getProductSuppliers,
-  getProductCategories
+  getProductCategories,
+  getCategories
 };

@@ -248,8 +248,6 @@ const OwnerDashboardPage = () => {
     monthlyVisitors: 0,
     conversionRate: 0
   });
-  
-  const currentUser = { displayName: 'John Smith' };
 
   useEffect(() => {
     setTimeout(() => {
@@ -328,7 +326,6 @@ const OwnerDashboardPage = () => {
   };
 
   const toggleControlCenter = () => {
-    console.log("Toggling control center", !controlCenterOpen);
     setControlCenterOpen(!controlCenterOpen);
   };
 
@@ -372,28 +369,7 @@ const OwnerDashboardPage = () => {
   return (
     <div className="dashboard-content">
       <div className="dashboard-container">
-        <div className="dashboard-header">
-          <div>
-            <h1 className="dashboard-title">Owner Dashboard</h1>
-            <p className="dashboard-welcome">
-              Welcome back, {currentUser?.displayName || 'Owner'}! Today is {formattedDate}
-            </p>
-          </div>
-          <button 
-            className="control-center-button"
-            onClick={toggleControlCenter}
-          >
-            <div className="icon-wrapper">
-              <DashboardIcon fontSize="small" />
-              {unreadNotificationCount > 0 && (
-                <span className="notification-badge">
-                  {unreadNotificationCount}
-                </span>
-              )}
-            </div>
-            <span>Control Center</span>
-          </button>
-        </div>
+        {/* Remove the dashboard-header div that contains welcome message and control center button */}
         
         <div className="tabs-container">
           <div className="tab-buttons">
