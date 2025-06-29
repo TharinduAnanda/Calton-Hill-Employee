@@ -30,6 +30,27 @@ async function executeQuery(sql, params = []) {
 }
 
 /**
+ * Execute a transaction with multiple queries
+ * @param {Function} callback - Callback function that receives a connection and executes queries
+ * @returns {Promise<any>} - Result of the transaction
+ */
+async function executeTransaction(callback) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const result = await callback(connection);
+    await connection.commit();
+    return result;
+  } catch (error) {
+    await connection.rollback();
+    console.error('Transaction error:', error);
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+/**
  * Test database connection
  * @returns {Promise<boolean>} - Connection status
  */
@@ -45,5 +66,7 @@ async function testConnection() {
 
 module.exports = {
   executeQuery,
-  testConnection
+  executeTransaction,
+  testConnection,
+  pool
 };

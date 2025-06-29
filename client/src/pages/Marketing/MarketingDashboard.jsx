@@ -5,7 +5,8 @@ import {
   List, ListItem, ListItemText, Skeleton, Paper, Chip,
   Avatar
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { 
   Loyalty as LoyaltyIcon, 
   Campaign as CampaignIcon,
@@ -22,6 +23,32 @@ import marketingService from '../../services/marketingService';
 import './MarketingDashboard.css';
 
 const MarketingDashboard = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const isOwner = currentUser && currentUser.role === 'owner';
+  const isManager = currentUser && currentUser.role === 'manager';
+  
+  // Helper function to determine initial tab based on URL path
+  const getInitialTabFromPath = (path) => {
+    console.log("MarketingDashboard: Determining initial tab from path:", path);
+    
+    // Don't navigate further if we're already on the marketing dashboard
+    if (path.includes('/marketing/dashboard')) {
+      console.log("MarketingDashboard: Already on marketing dashboard, staying here");
+      return 0;
+    }
+    
+    // Handle other paths
+    if (path.includes('/marketing/loyalty')) return 1;
+    if (path.includes('/marketing/email')) return 2;
+    if (path.includes('/marketing/promotions')) return 3;
+    if (path.includes('/marketing/campaigns')) return 4;
+    if (path.includes('/marketing/analytics')) return 5;
+    
+    return 0; // Default to overview tab
+  };
+  
   const [dashboardData, setDashboardData] = useState({
     loyalty: {
       totalMembers: 0,
@@ -39,12 +66,30 @@ const MarketingDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState(0);
-  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState(getInitialTabFromPath(location.pathname));
   
   useEffect(() => {
+    console.log("MarketingDashboard: Component mounted with activeTab:", activeTab);
+    console.log("MarketingDashboard: Current URL path:", window.location.pathname);
+    
+    // Determine if we're in an owner or manager context
+    const currentPath = window.location.pathname;
+    const isOwnerContext = currentPath.includes('/owner/');
+    const isManagerContext = !isOwnerContext;
+    
+    console.log(`MarketingDashboard: Running in ${isOwnerContext ? 'owner' : 'manager'} context`);
+    
     fetchDashboardData();
+    
+    return () => {
+      console.log("MarketingDashboard: Component unmounted");
+    };
   }, []);
+  
+  // Monitor activeTab changes
+  useEffect(() => {
+    console.log("MarketingDashboard: activeTab changed to:", activeTab);
+  }, [activeTab]);
 
   const fetchDashboardData = async () => {
     try {
@@ -71,36 +116,82 @@ const MarketingDashboard = () => {
       setError(null);
     } catch (err) {
       console.error('Error fetching marketing dashboard data:', err);
-      setError('Failed to load marketing dashboard data. Please try again later.');
+      
+      // Set fallback data to ensure UI renders even if API fails
+      setDashboardData({
+        loyalty: {
+          totalMembers: 120,
+          activeRewards: 5,
+          pointsIssued: 2450,
+          pointsRedeemed: 1280
+        },
+        campaigns: {
+          active: 2,
+          scheduled: 3,
+          completed: 8,
+          totalSent: 12500
+        },
+        recentActivity: [
+          { 
+            id: 1, 
+            action: "New loyalty member signup", 
+            date: new Date().toISOString(), 
+            type: "loyalty" 
+          },
+          {
+            id: 2,
+            action: "Monthly newsletter sent",
+            date: new Date(Date.now() - 86400000).toISOString(),
+            type: "email"
+          },
+          {
+            id: 3,
+            action: "Summer promotion activated",
+            date: new Date(Date.now() - 172800000).toISOString(),
+            type: "promotion"
+          }
+        ]
+      });
+      
+      setError('Using sample data. Failed to load live marketing data. Please check your network connection or server status.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleTabChange = (event, newValue) => {
+    console.log("MarketingDashboard: Tab change requested from", activeTab, "to", newValue);
+    
+    // Always update the active tab state
     setActiveTab(newValue);
     
-    // Navigate based on tab selection
-    switch(newValue) {
-      case 0: // Stay on dashboard
-        break;
-      case 1:
-        navigate('/marketing/loyalty');
-        break;
-      case 2:
-        navigate('/marketing/email');
-        break;
-      case 3:
-        navigate('/marketing/promotions');
-        break;
-      case 4:
-        navigate('/marketing/campaigns');
-        break;
-      case 5:
-        navigate('/marketing/analytics');
-        break;
-      default:
-        break;
+    // Determine if we're in an owner or manager context
+    const currentPath = window.location.pathname;
+    const isOwnerContext = currentPath.includes('/owner/');
+    
+    // Prevent navigation if already on this page
+    const newPath = getPathFromTabIndex(newValue, isOwnerContext);
+    if (currentPath === newPath) {
+      console.log(`MarketingDashboard: Already on ${newPath}. Preventing unnecessary navigation.`);
+      return;
+    }
+    
+    // Navigate based on tab selection and context
+    navigate(newPath);
+  };
+
+  // Helper function to get path from tab index
+  const getPathFromTabIndex = (tabIndex, isOwnerContext) => {
+    const basePrefix = isOwnerContext ? '/owner/marketing' : '/marketing';
+    
+    switch(tabIndex) {
+      case 0: return `${basePrefix}/dashboard`;
+      case 1: return `${basePrefix}/loyalty`;
+      case 2: return `${basePrefix}/email`;
+      case 3: return `${basePrefix}/promotions`;
+      case 4: return `${basePrefix}/campaigns`;
+      case 5: return `${basePrefix}/analytics`;
+      default: return `${basePrefix}/dashboard`;
     }
   };
 

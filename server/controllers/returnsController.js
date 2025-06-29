@@ -120,7 +120,7 @@ exports.getReturnDetails = async (req, res) => {
     const itemsQuery = `
       SELECT 
         ri.*,
-        oi.Unit_Price as original_price,
+        oi.Price as original_price,
         oi.Quantity as original_quantity,
         p.Name as product_name,
         p.SKU as product_sku,
@@ -217,7 +217,7 @@ exports.createReturnRequest = async (req, res) => {
         
         // Check if order item exists
         const [orderItemResult] = await connection.query(
-          'SELECT Order_Item_ID, Quantity, Unit_Price FROM order_item WHERE Order_Item_ID = ? AND Order_ID = ?',
+          'SELECT Order_Item_ID, Quantity, Price FROM order_item WHERE Order_Item_ID = ? AND Order_ID = ?',
           [item.order_item_id, order_id]
         );
         
@@ -233,7 +233,7 @@ exports.createReturnRequest = async (req, res) => {
         }
         
         // Calculate refund amount
-        const refundAmount = orderItem.Unit_Price * item.quantity;
+        const refundAmount = orderItem.Price * item.quantity;
         totalRefundAmount += refundAmount;
         
         // Insert return item

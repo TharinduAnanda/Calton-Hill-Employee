@@ -7,15 +7,20 @@ import {
   ListItemIcon, 
   ListItemText, 
   Divider,
-  Box
+  Box,
+  Collapse
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import PeopleIcon from '@mui/icons-material/People';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import SettingsIcon from '@mui/icons-material/Settings';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
 import { useAuth } from '../../contexts/AuthContext';
 import './Sidebar.css';
+import { useState } from 'react';
 
 /**
  * Sidebar navigation component
@@ -25,6 +30,11 @@ import './Sidebar.css';
  */
 function Sidebar({ open, onClose }) {
   const { currentUser } = useAuth();
+  const [inventoryOpen, setInventoryOpen] = useState(true);
+  
+  const handleInventoryClick = () => {
+    setInventoryOpen(!inventoryOpen);
+  };
   
   /**
    * Get appropriate dashboard link based on user role
@@ -40,7 +50,16 @@ function Sidebar({ open, onClose }) {
     }
   }
   
+  function getInventoryLink() {
+    if (currentUser?.role === 'owner') {
+      return '/owner/inventory';
+    } else {
+      return '/inventory';
+    }
+  }
+  
   const dashboardLink = getDashboardLink();
+  const inventoryLink = getInventoryLink();
   const showStaffManagement = currentUser?.role === 'owner';
   
   return (
@@ -76,12 +95,31 @@ function Sidebar({ open, onClose }) {
             </ListItem>
           )}
           
-          <ListItem component={Link} to="/inventory">
+          <ListItem onClick={handleInventoryClick}>
             <ListItemIcon>
               <InventoryIcon />
             </ListItemIcon>
             <ListItemText primary="Inventory" />
+            {inventoryOpen ? <ExpandLess /> : <ExpandMore />}
           </ListItem>
+          
+          <Collapse in={inventoryOpen} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding>
+              <ListItem component={Link} to={inventoryLink} sx={{ pl: 4 }}>
+                <ListItemIcon>
+                  <InventoryIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="All Items" />
+              </ListItem>
+              
+              <ListItem component={Link} to={`${inventoryLink}/purchase-orders`} sx={{ pl: 4 }}>
+                <ListItemIcon>
+                  <ReceiptIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="Purchase Orders" />
+              </ListItem>
+            </List>
+          </Collapse>
           
           <ListItem component={Link} to="/orders">
             <ListItemIcon>

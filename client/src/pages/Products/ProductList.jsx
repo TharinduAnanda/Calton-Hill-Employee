@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import productService from '../../services/productService';
+import inventoryService from '../../services/inventoryService';
 import { 
   Box, Typography, Button, TextField, Card, CardContent, 
   CardMedia, CircularProgress, Grid, InputAdornment,
@@ -10,6 +11,7 @@ import { Add as AddIcon, Search as SearchIcon } from '@mui/icons-material';
 
 const ProductList = () => {
   const [products, setProducts] = useState([]);
+  const [inventoryData, setInventoryData] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
@@ -49,12 +51,66 @@ const ProductList = () => {
         .filter(Boolean))];
       setCategories(uniqueCategories);
       
+      // Fetch inventory data for all products
+      fetchInventoryData(productsData);
+      
     } catch (error) {
       console.error('Error fetching products:', error);
       setError('Failed to load products. Please try again later.');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Fetch inventory data for products
+  const fetchInventoryData = async (productsData) => {
+    try {
+      console.log('Fetching inventory data for all products');
+      const response = await inventoryService.getInventoryItems();
+      
+      // Process inventory data
+      let inventoryItems = [];
+      if (response?.data?.data && Array.isArray(response.data.data)) {
+        inventoryItems = response.data.data;
+      } else if (Array.isArray(response?.data)) {
+        inventoryItems = response.data;
+      } else if (Array.isArray(response)) {
+        inventoryItems = response;
+      }
+      
+      console.log('Inventory data:', inventoryItems);
+      
+      // Create a lookup object by product ID
+      const inventoryByProductId = {};
+      inventoryItems.forEach(item => {
+        const productId = item.Product_ID || item.product_id;
+        if (productId) {
+          inventoryByProductId[productId] = item;
+        }
+      });
+      
+      setInventoryData(inventoryByProductId);
+    } catch (error) {
+      console.error('Error fetching inventory data:', error);
+    }
+  };
+
+  // Get stock level from inventory
+  const getStockLevel = (productId, defaultStock = 0) => {
+    const inventory = inventoryData[productId];
+    if (inventory && inventory.Stock_Level !== undefined) {
+      return parseInt(inventory.Stock_Level);
+    }
+    return defaultStock;
+  };
+
+  // Get reorder level from inventory
+  const getReorderLevel = (productId) => {
+    const inventory = inventoryData[productId];
+    if (inventory && (inventory.Reorder_Level !== undefined || inventory.reorder_level !== undefined)) {
+      return parseInt(inventory.Reorder_Level || inventory.reorder_level);
+    }
+    return 10; // Default reorder level
   };
 
   const handleAddProduct = () => {
@@ -89,7 +145,8 @@ const ProductList = () => {
     filteredProductsLength: filteredProducts.length,
     searchTerm: search,
     selectedCategory: category,
-    allCategories: categories
+    allCategories: categories,
+    inventoryDataCount: Object.keys(inventoryData).length
   });
 
   if (loading) {
@@ -102,39 +159,6 @@ const ProductList = () => {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>Products ({products.length})</Typography>
-      
-      {/* Debug information */}
-      <Box sx={{ mb: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-        <Typography variant="subtitle1">Debug Info:</Typography>
-        <Typography variant="body2">Total Products: {products.length}</Typography>
-        <Typography variant="body2">Filtered Products: {filteredProducts.length}</Typography>
-        <Button 
-          variant="outlined" 
-          size="small" 
-          onClick={fetchProducts} 
-          sx={{ mt: 1 }}
-        >
-          Refresh Data
-        </Button>
-      </Box>
-      
-      {/* Simple list display */}
-      <Box sx={{ mb: 3 }}>
-        {products.length === 0 ? (
-          <Typography>No products available</Typography>
-        ) : (
-          <ul>
-            {products.map(product => (
-              <li key={product.id || product._id || product.Product_ID}>
-                {product.name || product.Name || 'Unnamed Product'} - 
-                ${product.price || product.Price || 0}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Box>
-      
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Products</Typography>
         <Button 
@@ -203,39 +227,125 @@ const ProductList = () => {
             const name = product.name || product.Name || 'Unnamed Product';
             const price = product.price || product.Price || 0;
             const category = product.category || product.Category || 'Uncategorized';
-            const imageUrl = product.image_url || product.imageUrl || product.image || 'https://via.placeholder.com/150';
-            const stockQty = product.stock_quantity || product.quantity || 0;
+            const imageUrl = product.image_url || product.imageUrl || product.Image_URL || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2VlZWVlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZpbGw9IiM5OTkiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
+            const stockQty = getStockLevel(id, product.stock_quantity || product.Stock_Level || 0);
+            const reorderLevel = getReorderLevel(id);
+            const status = product.status || product.Status || 'active';
+            const isDiscontinued = status === 'discontinued';
             
             return (
               <Grid item xs={12} sm={6} md={4} key={id}>
                 <Card 
                   sx={{ 
+                    width: '100%',
+                    height: '450px', // Exact fixed height for all cards
                     display: 'flex',
                     flexDirection: 'column',
-                    height: '100%',
                     cursor: 'pointer',
-                    '&:hover': { boxShadow: 6 }
+                    '&:hover': { boxShadow: 6 },
+                    position: 'relative',
+                    overflow: 'hidden' // Prevent content from overflowing
                   }}
                   onClick={() => handleProductClick(id)}
                 >
-                  <CardMedia
-                    component="img"
-                    height="140"
-                    image={imageUrl}
-                    alt={name}
-                    sx={{ objectFit: 'contain', bgcolor: '#f5f5f5' }}
-                  />
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6" component="h2" gutterBottom noWrap>
-                      {name}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary" gutterBottom>
-                      {category}
-                    </Typography>
-                    <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold' }}>
-                      ${Number(price).toFixed(2)}
-                    </Typography>
-                    <Box sx={{ mt: 1, display: 'flex', alignItems: 'center' }}>
+                  {isDiscontinued && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 0,
+                        right: 0,
+                        bgcolor: 'error.main',
+                        color: 'white',
+                        px: 2,
+                        py: 0.5,
+                        zIndex: 1,
+                        borderBottomLeftRadius: 8
+                      }}
+                    >
+                      Discontinued
+                    </Box>
+                  )}
+                  {/* Fixed-size image container */}
+                  <Box 
+                    sx={{ 
+                      height: '220px', // Exact height for all image containers
+                      width: '100%',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      bgcolor: '#f5f5f5',
+                      padding: 2,
+                      boxSizing: 'border-box',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: '100%',
+                        height: '180px', // Fixed height for image wrapper
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <CardMedia
+                        component="img"
+                        image={imageUrl}
+                        alt={name}
+                        sx={{ 
+                          objectFit: 'contain',
+                          width: 'auto',
+                          height: 'auto',
+                          maxHeight: '180px',
+                          maxWidth: '100%'
+                        }}
+                        onError={(e) => {
+                          // Replace with a data URI for fallback if the image fails to load
+                          e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2VlZWVlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZpbGw9IiM5OTkiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                  
+                  {/* Fixed content area */}
+                  <CardContent 
+                    sx={{ 
+                      flexGrow: 1, 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      justifyContent: 'space-between',
+                      height: '180px', // Fixed height for content area
+                      padding: 2,
+                      overflow: 'hidden' // Prevent content overflow
+                    }}
+                  >
+                    <Box sx={{ height: '120px', overflow: 'hidden' }}>
+                      <Typography 
+                        variant="h6" 
+                        component="h2" 
+                        gutterBottom 
+                        noWrap
+                        sx={{ fontWeight: 'medium', fontSize: '1.1rem' }}
+                      >
+                        {name}
+                      </Typography>
+                      <Typography 
+                        variant="body2" 
+                        color="textSecondary" 
+                        gutterBottom
+                        sx={{ mb: 1 }}
+                      >
+                        {category}
+                      </Typography>
+                      <Typography 
+                        variant="h6" 
+                        color="primary" 
+                        sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}
+                      >
+                        ${Number(price).toFixed(2)}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
                       <Box 
                         component="span"
                         sx={{
@@ -243,16 +353,23 @@ const ProductList = () => {
                           height: 10,
                           borderRadius: '50%',
                           mr: 1,
-                          bgcolor: stockQty > 10 ? 'success.main' : stockQty > 0 ? 'warning.main' : 'error.main'
+                          bgcolor: isDiscontinued 
+                            ? 'error.main' 
+                            : stockQty <= 0 
+                              ? 'error.main' 
+                              : stockQty <= reorderLevel 
+                                ? 'warning.main' 
+                                : 'success.main'
                         }}
                       />
                       <Typography variant="body2">
-                        {stockQty > 10 
-                          ? `In Stock (${stockQty})`
-                          : stockQty > 0
-                            ? `Low Stock (${stockQty})`
-                            : 'Out of Stock'
-                        }
+                        {isDiscontinued 
+                          ? 'Discontinued' 
+                          : stockQty <= 0 
+                            ? 'Out of Stock' 
+                            : stockQty <= reorderLevel 
+                              ? 'Low Stock' 
+                              : 'In Stock'}
                       </Typography>
                     </Box>
                   </CardContent>

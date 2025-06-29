@@ -110,6 +110,62 @@ function getOrderItems(id) {
     });
 }
 
+/**
+ * Get manager-specific order statistics
+ * @returns {Promise<Object>} Manager order statistics
+ */
+function getManagerOrderStats() {
+  return axios.get(`${API_URL}/manager/stats`)
+    .then(response => response.data)
+    .catch(error => {
+      return handleApiError(error, 'Failed to fetch manager order statistics');
+    });
+}
+
+/**
+ * Get filtered orders for managers
+ * @param {Object} filters - Filter parameters
+ * @returns {Promise<Object>} Filtered orders data
+ */
+function getFilteredOrders(filters = {}) {
+  const queryString = new URLSearchParams(filters).toString();
+  const url = `${API_URL}/manager/filtered?${queryString}`;
+  
+  return axios.get(url)
+    .then(response => response.data)
+    .catch(error => {
+      return handleApiError(error, 'Failed to fetch filtered orders');
+    });
+}
+
+/**
+ * Update order payment details
+ * @param {string} id - Order ID
+ * @param {Object} paymentData - Payment data to update
+ * @returns {Promise<Object>} Result of update
+ */
+function updateOrderPayment(id, paymentData) {
+  return axios.put(`${API_URL}/${id}/payment`, paymentData)
+    .then(response => response.data)
+    .catch(error => {
+      return handleApiError(error, 'Failed to update order payment details');
+    });
+}
+
+/**
+ * Assign staff to an order
+ * @param {string} id - Order ID
+ * @param {number} staffId - Staff ID to assign
+ * @returns {Promise<Object>} Result of assignment
+ */
+function assignStaffToOrder(id, staffId) {
+  return axios.put(`${API_URL}/${id}/assign-staff`, { staffId })
+    .then(response => response.data)
+    .catch(error => {
+      return handleApiError(error, 'Failed to assign staff to order');
+    });
+}
+
 // Create named service object
 const orderService = {
   getAllOrders,
@@ -118,7 +174,11 @@ const orderService = {
   updateOrder,
   deleteOrder,
   updateOrderStatus,
-  getOrderItems
+  getOrderItems,
+  getManagerOrderStats,
+  getFilteredOrders,
+  updateOrderPayment,
+  assignStaffToOrder
 };
 
 export {
@@ -128,7 +188,11 @@ export {
   updateOrder,
   deleteOrder,
   updateOrderStatus,
-  getOrderItems
+  getOrderItems,
+  getManagerOrderStats,
+  getFilteredOrders,
+  updateOrderPayment,
+  assignStaffToOrder
 };
 
 export default orderService;

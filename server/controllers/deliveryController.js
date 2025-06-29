@@ -468,7 +468,7 @@ exports.getDeliveryDetails = async (req, res) => {
       SELECT 
         oi.Order_Item_ID,
         oi.Quantity,
-        oi.Unit_Price,
+        oi.Price,
         p.Name as product_name,
         p.SKU as product_sku,
         p.Image_URL as product_image

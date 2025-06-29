@@ -27,7 +27,7 @@ import {
   Receipt
 } from '@mui/icons-material';
 import { format, subDays } from 'date-fns';
-import axios from 'axios';
+import instance from '../../utils/axiosConfig';
 import { Line, Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { useAuth } from '../../contexts/AuthContext';
@@ -81,7 +81,7 @@ const FinancialDashboard = () => {
       const formattedStartDate = format(startDate, 'yyyy-MM-dd');
       const formattedEndDate = format(endDate, 'yyyy-MM-dd');
       
-      const response = await axios.get(`/api/financial/summary`, {
+      const response = await instance.get(`http://localhost:5000/api/financial/summary`, {
         params: {
           startDate: formattedStartDate,
           endDate: formattedEndDate
@@ -107,7 +107,7 @@ const FinancialDashboard = () => {
       const formattedStartDate = format(startDate, 'yyyy-MM-dd');
       const formattedEndDate = format(endDate, 'yyyy-MM-dd');
       
-      const response = await axios.get(`/api/financial/report`, {
+      const response = await instance.get(`http://localhost:5000/api/financial/report`, {
         params: {
           reportType,
           startDate: formattedStartDate,
@@ -207,18 +207,12 @@ const FinancialDashboard = () => {
   }
 
   return (
-    <Box sx={{ 
-      p: 3, 
-      height: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden'
-    }}>
-      <Typography variant="h4" gutterBottom sx={{ flexShrink: 0 }}>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
         Financial Dashboard
       </Typography>
       
-      <Paper sx={{ p: 2, mb: 3, flexShrink: 0 }}>
+      <Paper sx={{ p: 2, mb: 3 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6">Financial Overview</Typography>
           <Box display="flex" gap={2}>
@@ -243,119 +237,117 @@ const FinancialDashboard = () => {
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       </Paper>
       
-      <Box sx={{ flex: 1, overflow: 'auto' }}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Box>
-                    <Typography color="textSecondary" variant="subtitle2">Total Revenue</Typography>
-                    <Typography variant="h5">{formatCurrency(financialData.summary.total_sales)}</Typography>
-                  </Box>
-                  <AttachMoney sx={{ fontSize: 40, color: 'primary.main' }} />
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Typography color="textSecondary" variant="subtitle2">Total Revenue</Typography>
+                  <Typography variant="h5">{formatCurrency(financialData.summary.total_sales)}</Typography>
                 </Box>
-                <Typography variant="body2" color="textSecondary">
-                  {financialData.summary.sale_count} orders
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Box>
-                    <Typography color="textSecondary" variant="subtitle2">Net Revenue</Typography>
-                    <Typography variant="h5">{formatCurrency(financialData.summary.net_revenue)}</Typography>
-                  </Box>
-                  <TrendingUp sx={{ fontSize: 40, color: 'success.main' }} />
-                </Box>
-                <Typography variant="body2" color="textSecondary">
-                  After {formatCurrency(financialData.summary.total_refunds)} refunds
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Box>
-                    <Typography color="textSecondary" variant="subtitle2">Expenses</Typography>
-                    <Typography variant="h5">{formatCurrency(financialData.summary.total_expenses)}</Typography>
-                  </Box>
-                  <TrendingDown sx={{ fontSize: 40, color: 'error.main' }} />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Box>
-                    <Typography color="textSecondary" variant="subtitle2">Profit</Typography>
-                    <Typography variant="h5" color={financialData.summary.profit >= 0 ? 'success.main' : 'error.main'}>
-                      {formatCurrency(financialData.summary.profit)}
-                    </Typography>
-                  </Box>
-                  <PieChart sx={{ fontSize: 40, color: 'info.main' }} />
-                </Box>
-                <Typography variant="body2" color="textSecondary">
-                  {formatCurrency(financialData.summary.tax_collected)} tax collected
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>Sales Trend</Typography>
-                <Box height={300}>
-                  <Line 
-                    data={prepareSalesTrendChart()} 
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: { position: 'top' },
-                      }
-                    }} 
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>Top Products by Revenue</Typography>
-                <Box height={300}>
-                  <Bar 
-                    data={prepareTopProductsChart()} 
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: { display: false },
-                      }
-                    }} 
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+                <AttachMoney sx={{ fontSize: 40, color: 'primary.main' }} />
+              </Box>
+              <Typography variant="body2" color="textSecondary">
+                {financialData.summary.sale_count} orders
+              </Typography>
+            </CardContent>
+          </Card>
         </Grid>
-      </Box>
+        
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Typography color="textSecondary" variant="subtitle2">Net Revenue</Typography>
+                  <Typography variant="h5">{formatCurrency(financialData.summary.net_revenue)}</Typography>
+                </Box>
+                <TrendingUp sx={{ fontSize: 40, color: 'success.main' }} />
+              </Box>
+              <Typography variant="body2" color="textSecondary">
+                After {formatCurrency(financialData.summary.total_refunds)} refunds
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Typography color="textSecondary" variant="subtitle2">Expenses</Typography>
+                  <Typography variant="h5">{formatCurrency(financialData.summary.total_expenses)}</Typography>
+                </Box>
+                <TrendingDown sx={{ fontSize: 40, color: 'error.main' }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+        
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Typography color="textSecondary" variant="subtitle2">Profit</Typography>
+                  <Typography variant="h5" color={financialData.summary.profit >= 0 ? 'success.main' : 'error.main'}>
+                    {formatCurrency(financialData.summary.profit)}
+                  </Typography>
+                </Box>
+                <PieChart sx={{ fontSize: 40, color: 'info.main' }} />
+              </Box>
+              <Typography variant="body2" color="textSecondary">
+                {formatCurrency(financialData.summary.tax_collected)} tax collected
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>Sales Trend</Typography>
+              <Box height={300}>
+                <Line 
+                  data={prepareSalesTrendChart()} 
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { position: 'top' },
+                    }
+                  }} 
+                />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>Top Products by Revenue</Typography>
+              <Box height={300}>
+                <Bar 
+                  data={prepareTopProductsChart()} 
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                    }
+                  }} 
+                />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* Reports Section */}
-      <Paper sx={{ p: 2 }}>
+      <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>Financial Reports</Typography>
         <Box display="flex" alignItems="center" gap={2} mb={3}>
           <FormControl size="small" sx={{ width: 200 }}>

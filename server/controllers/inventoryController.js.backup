@@ -1,0 +1,2104 @@
+const { executeQuery } = require('../config/db');
+const { validationResult } = require('express-validator');
+
+/**
+ * Get all inventory items with pagination, search, filtering and sorting
+ */
+exports.getAllInventory = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10, 
+      search = '', 
+      category = '', 
+      sortBy = 'name',
+      sortOrder = 'asc',
+      product_id = null
+    } = req.query;
+    
+    // If a specific product_id is provided, return just that inventory record
+    if (product_id) {
+      console.log(`Getting inventory for specific product ID: ${product_id}`);
+      const query = `
+        SELECT 
+          i.*,
+          p.Name,
+          p.SKU,
+          p.Description,
+          p.Category,
+          p.Price
+        FROM 
+          inventory i
+        LEFT JOIN 
+          product p ON i.Product_ID = p.Product_ID
+        WHERE 
+          i.Product_ID = ?
+      `;
+      
+      const inventoryItems = await executeQuery(query, [product_id]);
+      console.log(`Found ${inventoryItems.length} inventory records for product #${product_id}`);
+      
+      if (inventoryItems.length > 0) {
+        console.log('Inventory data:', inventoryItems[0]);
+        return res.status(200).json(inventoryItems);
+      } else {
+        // If no inventory record exists yet, look up the product and return product data
+        const productQuery = `SELECT * FROM product WHERE Product_ID = ?`;
+        const productData = await executeQuery(productQuery, [product_id]);
+        
+        if (productData.length > 0) {
+          console.log('No inventory record, returning product data:', productData[0]);
+          // Create a placeholder inventory record based on product data
+          const placeholderInventory = {
+            Product_ID: productData[0].Product_ID,
+            Stock_Level: productData[0].Stock_Level || 0,
+            Reorder_Level: productData[0].Reorder_Level || 20,
+            Name: productData[0].Name,
+            SKU: productData[0].SKU,
+            Price: productData[0].Price
+          };
+          
+          return res.status(200).json([placeholderInventory]);
+        }
+        
+        return res.status(200).json([]);
+      }
+    }
+    
+    const offset = (page - 1) * parseInt(limit);
+    
+    // Build the query with all columns that now exist
+    let query = `
+      SELECT 
+        p.Product_ID,
+        p.Name,
+        p.SKU,
+        p.Description,
+        p.Category,
+        p.Price,
+        p.Image_URL,
+        p.image_public_id,
+        i.Stock_Level,
+        i.Reorder_Level,
+        i.Inventory_ID
+      FROM 
+        product p
+      LEFT JOIN 
+        inventory i ON p.Product_ID = i.Product_ID
+    `;
+    
+    // Add where clause
+    const params = [];
+    let whereClause = '';
+    
+    if (search) {
+      whereClause = 'WHERE (p.Name LIKE ? OR p.SKU LIKE ? OR p.Description LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+    
+    if (category) {
+      if (whereClause) {
+        whereClause += ' AND p.Category = ?';
+      } else {
+        whereClause = 'WHERE p.Category = ?';
+      }
+      params.push(category);
+    }
+    
+    query += whereClause;
+    
+    // Add order by clause
+    let orderByField;
+    switch(sortBy.toLowerCase()) {
+      case 'name': orderByField = 'p.Name'; break;
+      case 'sku': orderByField = 'p.SKU'; break;
+      case 'price': orderByField = 'p.Price'; break;
+      case 'stock_level': orderByField = 'i.Stock_Level'; break;
+      case 'category': orderByField = 'p.Category'; break;
+      default: orderByField = 'p.Name';
+    }
+    
+    query += ` ORDER BY ${orderByField} ${sortOrder === 'desc' ? 'DESC' : 'ASC'}`;
+    
+    // Add pagination
+    query += ' LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), offset);
+    
+    // Execute query
+    const [items] = await executeQuery(query, params);
+    
+    // Get total count for pagination
+    let countQuery = `SELECT COUNT(*) as total FROM product p ${whereClause}`;
+    const [countResult] = await executeQuery(countQuery, params.slice(0, params.length - 2));
+    const total = countResult[0]?.total || 0;
+    
+    return res.status(200).json({
+      success: true,
+      data: items,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error in getAllInventory:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve inventory items',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get inventory summary statistics
+ */
+exports.getInventorySummary = async (req, res) => {
+  try {
+    // Get total items count
+    const [totalItemsResult] = await executeQuery('SELECT COUNT(*) as count FROM inventory');
+    const totalItems = totalItemsResult[0]?.count || 0;
+    
+    // Get total inventory value
+    const [totalValueResult] = await executeQuery(`
+      SELECT SUM(p.cost_price * i.Stock_Level) as total_value 
+      FROM inventory i
+      JOIN product p ON i.Product_ID = p.Product_ID
+      WHERE i.Stock_Level > 0
+    `);
+    const totalValue = totalValueResult[0]?.total_value || 0;
+    
+    // Get low stock items count
+    const [lowStockResult] = await executeQuery(`
+      SELECT COUNT(*) as count 
+      FROM inventory i
+      WHERE i.Stock_Level <= i.reorder_level AND i.Stock_Level > 0
+    `);
+    const lowStockItems = lowStockResult[0]?.count || 0;
+    
+    // Get out of stock items count
+    const [outOfStockResult] = await executeQuery(`
+      SELECT COUNT(*) as count 
+      FROM inventory i
+      WHERE i.Stock_Level = 0
+    `);
+    const outOfStockItems = outOfStockResult[0]?.count || 0;
+    
+    // Get new items this month
+    const currentMonth = new Date().getMonth() + 1; // JS months are 0-indexed
+    const currentYear = new Date().getFullYear();
+    const [newItemsResult] = await executeQuery(`
+      SELECT COUNT(*) as count 
+      FROM inventory i
+      WHERE MONTH(i.Last_Updated) = ? AND YEAR(i.Last_Updated) = ?
+    `, [currentMonth, currentYear]);
+    const newItemsThisMonth = newItemsResult[0]?.count || 0;
+    
+    // Calculate items needing attention (need to reorder within 7 days)
+    const [attentionResult] = await executeQuery(`
+      SELECT COUNT(*) as count
+      FROM inventory i
+      WHERE i.Stock_Level <= i.reorder_level + 10 AND i.Stock_Level > i.reorder_level
+    `);
+    const itemsNeedingAttention = attentionResult[0]?.count || 0;
+    
+    // Get recent stock movements
+    const [recentMovements] = await executeQuery(`
+      SELECT 
+        sm.movement_id,
+        sm.product_id,
+        p.Name as product_name,
+        sm.quantity_change,
+        sm.movement_type,
+        sm.movement_date,
+        sm.reference_id
+      FROM stock_movement sm
+      JOIN product p ON sm.product_id = p.Product_ID
+      ORDER BY sm.movement_date DESC
+      LIMIT 5
+    `);
+    
+    // Get category distribution
+    const [categoryDistribution] = await executeQuery(`
+      SELECT 
+        p.Category as category,
+        COUNT(*) as count,
+        SUM(i.Stock_Level) as total_stock
+      FROM inventory i
+      JOIN product p ON i.Product_ID = p.Product_ID
+      GROUP BY p.Category
+      ORDER BY count DESC
+    `);
+    
+    // Return the data
+    res.status(200).json({
+      success: true,
+      data: {
+        totalItems,
+        totalValue,
+        lowStockItems,
+        outOfStockItems,
+        newItemsThisMonth,
+        itemsNeedingAttention,
+        recentMovements,
+        categoryDistribution
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching inventory summary:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve inventory summary',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get low stock inventory items
+ */
+exports.getLowStockItems = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, threshold } = req.query;
+    const offset = (page - 1) * limit;
+    
+    let thresholdCondition = 'i.Stock_Level <= i.Reorder_Level';
+    if (threshold) {
+      thresholdCondition = `i.Stock_Level <= ${parseInt(threshold)}`;
+    }
+    
+    const query = `
+      SELECT 
+        p.Product_ID,
+        p.Name,
+        p.SKU,
+        p.Category,
+        i.Stock_Level,
+        i.Reorder_Level,
+        (i.Reorder_Level - i.Stock_Level) as needed
+      FROM inventory i
+      JOIN product p ON i.Product_ID = p.Product_ID
+      WHERE ${thresholdCondition}
+      ORDER BY needed DESC
+      LIMIT ? OFFSET ?
+    `;
+    
+    let items = [];
+    try {
+      const result = await executeQuery(query, [parseInt(limit), offset]);
+      
+      // Ensure items is always an array
+      items = Array.isArray(result) && result[0] ? 
+              (Array.isArray(result[0]) ? result[0] : [result[0]]) : 
+              [];
+              
+      console.log('Low stock items query result:', { 
+        resultType: typeof result, 
+        isArray: Array.isArray(result),
+        firstItemType: result && result[0] ? typeof result[0] : 'undefined',
+        isFirstItemArray: result && result[0] ? Array.isArray(result[0]) : false,
+        length: items.length
+      });
+    } catch (queryError) {
+      console.error('Error executing low stock query:', queryError);
+      items = [];
+    }
+    
+    const [countResult] = await executeQuery(
+      `SELECT COUNT(*) as total FROM inventory i WHERE ${thresholdCondition}`
+    );
+    
+    const total = countResult[0]?.total || 0;
+    
+    res.status(200).json({
+      success: true,
+      data: items,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching low stock items:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve low stock items',
+      error: error.message,
+      data: [] // Always include empty data array on error
+    });
+  }
+};
+
+/**
+ * Get single inventory item by ID
+ */
+exports.getInventoryById = async (req, res) => {
+  try {
+    const inventoryId = req.params.id;
+    
+    if (!inventoryId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Inventory ID is required' 
+      });
+    }
+
+    const query = `
+      SELECT 
+        i.*,
+        p.Name as product_name,
+        p.SKU,
+        p.Description,
+        p.Category,
+        p.Price,
+        p.Image_URL
+      FROM inventory i
+      JOIN product p ON i.Product_ID = p.Product_ID
+      WHERE i.Inventory_ID = ?
+    `;
+    
+    const [inventory] = await executeQuery(query, [inventoryId]);
+    
+    if (!inventory || inventory.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Inventory item not found' 
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: inventory[0]
+    });
+  } catch (error) {
+    console.error('Error fetching inventory item:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error fetching inventory item',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Create new inventory item
+ */
+exports.createInventory = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        errors: errors.array()
+      });
+    }
+
+    const { product_id, stock_level, supplier_id, reorder_level = 5 } = req.body;
+    
+    const query = `
+      INSERT INTO inventory 
+        (Product_ID, Stock_Level, Supplier_ID, Reorder_Level, Last_Updated) 
+      VALUES 
+        (?, ?, ?, ?, NOW())
+    `;
+    
+    const [result] = await executeQuery(query, [
+      product_id, 
+      stock_level, 
+      supplier_id || null, 
+      reorder_level
+    ]);
+    
+    // Update product stock level
+    await executeQuery(
+      'UPDATE product SET Stock_Level = ? WHERE Product_ID = ?',
+      [stock_level, product_id]
+    );
+    
+    res.status(201).json({
+      success: true,
+      message: 'Inventory item created successfully',
+      data: { id: result.insertId }
+    });
+  } catch (error) {
+    console.error('Error creating inventory item:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create inventory item',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Create initial inventory record for a product
+ */
+exports.createInitialInventory = async (req, res) => {  try {    console.log('createInitialInventory called with body:', req.body);    console.log('User in request:', req.user);    console.log('Auth header:', req.headers.authorization);        const { product_id, stock_level, supplier_id, reorder_level, optimal_level, notes } = req.body;        if (!product_id) {      return res.status(400).json({        success: false,        message: 'Product ID is required'      });    }
+    
+    // Check if product exists
+    const product = await executeQuery('SELECT * FROM product WHERE Product_ID = ?', [product_id]);
+    
+    if (!product || product.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found'
+      });
+    }
+    
+    // Check if inventory record already exists
+    const existingInventory = await executeQuery(
+      'SELECT * FROM inventory WHERE Product_ID = ?', 
+      [product_id]
+    );
+    
+    if (existingInventory && existingInventory.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Inventory record already exists for this product'
+      });
+    }
+    
+    // Create inventory record
+    await executeQuery(
+      `INSERT INTO inventory 
+        (Product_ID, Stock_Level, Reorder_Level, optimal_level, Last_Updated, Supplier_ID) 
+      VALUES 
+        (?, ?, ?, ?, NOW(), ?)`,
+      [product_id, stock_level || 0, reorder_level || 10, optimal_level || 50, supplier_id || null]
+    );
+    
+    // Update product stock level
+    await executeQuery(
+      'UPDATE product SET Stock_Level = ? WHERE Product_ID = ?',
+      [stock_level || 0, product_id]
+    );
+    
+    // Record stock movement - ensure we have a user ID, even if authentication failed
+    const userId = req.user?.userId || 1; // Default to owner ID 1 if no user in request
+    
+    console.log('Creating stock movement record with userID:', userId);
+    
+    await executeQuery(
+      `INSERT INTO stock_movement 
+        (product_id, quantity_change, movement_type, notes, created_by, movement_date)
+      VALUES
+        (?, ?, ?, ?, ?, NOW())`,
+      [
+        product_id, 
+        stock_level, 
+        'INITIAL', 
+        notes || 'Initial inventory setup',
+        userId
+      ]
+    );
+    
+    res.status(201).json({
+      success: true,
+      message: 'Initial inventory created successfully',
+      data: {
+        product_id,
+        stock_level,
+        reorder_level
+      }
+    });
+  } catch (error) {
+    console.error('Error creating initial inventory:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create initial inventory',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * Create or update initial inventory
+ */
+exports.setupInitialInventory = async (req, res) => {
+  try {
+    const { 
+      product_id, 
+      stock_level, 
+      reorder_level, 
+      supplier_id, 
+      notes,
+      reorder_quantity,
+      unit_of_measure,
+      optimal_level
+    } = req.body;
+    
+    if (!product_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product ID is required'
+      });
+    }
+    
+    // Check if product exists
+    const [productCheck] = await executeQuery(
+      'SELECT Product_ID FROM product WHERE Product_ID = ?', 
+      [product_id]
+    );
+    
+    if (!productCheck || productCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found'
+      });
+    }
+    
+    // Check if inventory record already exists
+    const [inventoryCheck] = await executeQuery(
+      'SELECT Inventory_ID FROM inventory WHERE Product_ID = ?', 
+      [product_id]
+    );
+    
+    if (inventoryCheck && inventoryCheck.length > 0) {
+      // Update existing record
+      await executeQuery(
+        `UPDATE inventory SET 
+          Stock_Level = ?, 
+          Reorder_Level = ?, 
+          Supplier_ID = ?,
+          reorder_quantity = ?,
+          unit_of_measure = ?,
+          optimal_level = ?,
+          Last_Updated = NOW() 
+        WHERE Product_ID = ?`,
+        [
+          stock_level || 0,
+          reorder_level || 10, // Default to 10 if not provided
+          supplier_id || null,
+          reorder_quantity || 0,
+          unit_of_measure || null,
+          optimal_level || 50, // Default to 50 if not provided
+          product_id
+        ]
+      );
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Inventory updated successfully',
+        inventory_id: inventoryCheck[0].Inventory_ID
+      });
+    }
+    
+    // Create new inventory record
+    const [result] = await executeQuery(
+      `INSERT INTO inventory (
+        Product_ID, 
+        Stock_Level, 
+        Reorder_Level, 
+        Supplier_ID,
+        reorder_quantity,
+        unit_of_measure,
+        optimal_level,
+        Last_Updated,
+        inventory_value_method
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'FIFO')`,
+      [
+        product_id,
+        stock_level || 0,
+        reorder_level || 10, // Default to 10 if not provided
+        supplier_id || null,
+        reorder_quantity || 0,
+        unit_of_measure || null,
+        optimal_level || 50 // Default to 50 if not provided
+      ]
+    );
+    
+    // Update product stock level to match
+    await executeQuery(
+      'UPDATE product SET Stock_Level = ? WHERE Product_ID = ?',
+      [stock_level || 0, product_id]
+    );
+    
+    res.status(201).json({
+      success: true,
+      message: 'Inventory created successfully',
+      inventory_id: result.insertId
+    });
+  } catch (error) {
+    console.error('Error setting up inventory:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to setup inventory',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Update inventory item
+ */
+exports.updateInventory = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        errors: errors.array()
+      });
+    }
+
+    const { id } = req.params;
+    const { stock_level, supplier_id, reorder_level } = req.body;
+    
+    if (!id || isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid inventory ID is required'
+      });
+    }
+    
+    // Check if inventory exists
+    const [inventory] = await executeQuery(
+      'SELECT * FROM inventory WHERE Inventory_ID = ?', 
+      [id]
+    );
+    
+    if (inventory.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Inventory item not found'
+      });
+    }
+    
+    // Build update query
+    let updateQuery = 'UPDATE inventory SET ';
+    const params = [];
+    const updates = [];
+    
+    if (stock_level !== undefined) {
+      updates.push('Stock_Level = ?');
+      params.push(stock_level);
+    }
+    
+    if (supplier_id !== undefined) {
+      updates.push('Supplier_ID = ?');
+      params.push(supplier_id);
+    }
+    
+    if (reorder_level !== undefined) {
+      updates.push('Reorder_Level = ?');
+      params.push(reorder_level);
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid fields provided for update'
+      });
+    }
+    
+    updateQuery += updates.join(', ') + ', Last_Updated = NOW() WHERE Inventory_ID = ?';
+    params.push(id);
+    
+    await executeQuery(updateQuery, params);
+    
+    // If stock level was updated, update product table too
+    if (stock_level !== undefined) {
+      await executeQuery(
+        'UPDATE product SET Stock_Level = ? WHERE Product_ID = ?',
+        [stock_level, inventory[0].Product_ID]
+      );
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Inventory item updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating inventory item:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update inventory item',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Delete inventory item
+ */
+exports.deleteInventory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id || isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid inventory ID is required'
+      });
+    }
+    
+    // Check if inventory exists
+    const [inventory] = await executeQuery(
+      'SELECT * FROM inventory WHERE Inventory_ID = ?', 
+      [id]
+    );
+    
+    if (inventory.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Inventory item not found'
+      });
+    }
+    
+    // Delete the inventory item
+    await executeQuery(
+      'DELETE FROM inventory WHERE Inventory_ID = ?', 
+      [id]
+    );
+    
+    res.status(200).json({
+      success: true,
+      message: 'Inventory item deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting inventory item:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete inventory item',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Adjust inventory quantity
+ */
+exports.adjustQuantity = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        errors: errors.array()
+      });
+    }
+
+    const { id } = req.params;
+    const { quantity_change, adjustment_reason } = req.body;
+    
+    // Check if inventory exists
+    const [inventory] = await executeQuery(`
+      SELECT i.*, p.Name as product_name 
+      FROM inventory i
+      JOIN product p ON i.Product_ID = p.Product_ID
+      WHERE i.Inventory_ID = ?
+    `, [id]);
+    
+    if (inventory.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Inventory item not found'
+      });
+    }
+    
+    const currentQuantity = inventory[0].Stock_Level;
+    const newQuantity = currentQuantity + parseInt(quantity_change);
+    
+    // Prevent negative inventory
+    if (newQuantity < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Adjustment would result in negative inventory'
+      });
+    }
+    
+    // Update inventory
+    await executeQuery(
+      'UPDATE inventory SET Stock_Level = ?, Last_Updated = NOW() WHERE Inventory_ID = ?',
+      [newQuantity, id]
+    );
+    
+    // Update product stock level
+    await executeQuery(
+      'UPDATE product SET Stock_Level = ? WHERE Product_ID = ?',
+      [newQuantity, inventory[0].Product_ID]
+    );
+    
+    // Record stock movement
+    try {
+      await executeQuery(
+        `INSERT INTO stock_movement 
+          (product_id, quantity_change, movement_type, reference_id, notes, created_by, movement_date)
+        VALUES
+          (?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          inventory[0].Product_ID, 
+          quantity_change, 
+          'ADJUSTMENT', 
+          null, 
+          adjustment_reason,
+          req.user?.userId || null
+        ]
+      );
+    } catch (error) {
+      console.warn('Could not record stock movement:', error.message);
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: `Inventory for ${inventory[0].product_name} adjusted successfully`,
+      data: {
+        previous_quantity: currentQuantity,
+        new_quantity: newQuantity,
+        difference: parseInt(quantity_change)
+      }
+    });
+  } catch (error) {
+    console.error('Error adjusting inventory:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to adjust inventory quantity',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get inventory item batches
+ */
+exports.getItemBatches = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { page = 1, limit = 10, includeExpired = 'false' } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Check if inventory exists
+    const [inventory] = await executeQuery(
+      'SELECT * FROM inventory WHERE Inventory_ID = ?', 
+      [id]
+    );
+    
+    if (inventory.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Inventory item not found'
+      });
+    }
+    
+    const showExpired = includeExpired === 'true';
+    let whereClause = 'WHERE product_id = ?';
+    if (!showExpired) {
+      whereClause += ' AND (expiry_date IS NULL OR expiry_date > CURDATE())';
+    }
+    
+    const query = `
+      SELECT 
+        b.*,
+        s.Name as supplier_name
+      FROM 
+        inventory_batch b
+      LEFT JOIN 
+        supplier s ON b.supplier_id = s.Supplier_ID
+      ${whereClause}
+      ORDER BY 
+        CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END,
+        expiry_date ASC,
+        received_date DESC
+      LIMIT ? OFFSET ?
+    `;
+    
+    const [batches] = await executeQuery(query, [
+      inventory[0].Product_ID, 
+      parseInt(limit), 
+      offset
+    ]);
+    
+    // Get total count
+    const [countResult] = await executeQuery(
+      `SELECT COUNT(*) as total FROM inventory_batch ${whereClause}`,
+      [inventory[0].Product_ID]
+    );
+    
+    const total = countResult[0]?.total || 0;
+    
+    res.status(200).json({
+      success: true,
+      data: batches,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching item batches:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve item batches',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Add a batch for an inventory item
+ */
+exports.addItemBatch = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        errors: errors.array()
+      });
+    }
+
+    const { id } = req.params;
+    const { 
+      batch_number, 
+      quantity, 
+      cost_per_unit, 
+      manufactured_date, 
+      expiry_date, 
+      supplier_id, 
+      notes 
+    } = req.body;
+    
+    // Check if inventory exists
+    const [inventory] = await executeQuery(
+      'SELECT * FROM inventory WHERE Inventory_ID = ?', 
+      [id]
+    );
+    
+    if (inventory.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Inventory item not found'
+      });
+    }
+    
+    // Insert the batch
+    const [batchResult] = await executeQuery(
+      `INSERT INTO inventory_batch 
+        (product_id, batch_number, quantity, cost_per_unit, 
+         manufactured_date, expiry_date, received_date, supplier_id, notes)
+      VALUES
+        (?, ?, ?, ?, ?, ?, CURDATE(), ?, ?)`,
+      [
+        inventory[0].Product_ID,
+        batch_number,
+        quantity,
+        cost_per_unit,
+        manufactured_date || null,
+        expiry_date || null,
+        supplier_id || null,
+        notes || null
+      ]
+    );
+    
+    // Update inventory stock level
+    await executeQuery(
+      'UPDATE inventory SET Stock_Level = Stock_Level + ?, Last_Updated = NOW() WHERE Inventory_ID = ?',
+      [quantity, id]
+    );
+    
+    // Update product stock level
+    await executeQuery(
+      'UPDATE product SET Stock_Level = Stock_Level + ? WHERE Product_ID = ?',
+      [quantity, inventory[0].Product_ID]
+    );
+    
+    // Record stock movement
+    try {
+      await executeQuery(
+        `INSERT INTO stock_movement 
+          (product_id, quantity_change, movement_type, reference_id, notes, created_by, movement_date)
+        VALUES
+          (?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          inventory[0].Product_ID,
+          quantity,
+          'PURCHASE',
+          batchResult.insertId,
+          `New batch #${batch_number} received`,
+          req.user?.userId || null
+        ]
+      );
+    } catch (error) {
+      console.warn('Could not record stock movement:', error.message);
+    }
+    
+    res.status(201).json({
+      success: true,
+      message: 'Batch added successfully',
+      data: { 
+        batch_id: batchResult.insertId,
+        inventory_id: id,
+        product_id: inventory[0].Product_ID
+      }
+    });
+  } catch (error) {
+    console.error('Error adding item batch:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add item batch',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get stock movement history
+ */
+exports.getStockMovementHistory = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10, 
+      startDate, 
+      endDate, 
+      itemId, 
+      itemName, 
+      type 
+    } = req.query;
+    
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    let conditions = [];
+    const params = [];
+    
+    // Build query conditions - don't require any specific condition
+    if (startDate) {
+      conditions.push('sm.movement_date >= ?');
+      params.push(new Date(startDate));
+    }
+    
+    if (endDate) {
+      conditions.push('sm.movement_date <= ?');
+      params.push(new Date(endDate));
+    }
+    
+    if (itemId) {
+      conditions.push('sm.product_id = ?');
+      params.push(itemId);
+    }
+    
+    if (itemName) {
+      conditions.push('p.Name LIKE ?');
+      params.push(`%${itemName}%`);
+    }
+    
+    if (type && type !== 'all') {
+      conditions.push('sm.movement_type = ?');
+      params.push(type.toUpperCase());
+    }
+    
+    const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+    
+    const query = `
+      SELECT 
+        sm.movement_id,
+        sm.product_id,
+        sm.quantity_change,
+        sm.movement_type,
+        sm.reference_id,
+        sm.notes,
+        sm.created_by,
+        sm.movement_date,
+        p.Name as product_name,
+        p.SKU as product_sku,
+        CONCAT(s.First_Name, ' ', s.Last_Name) as user_name
+      FROM 
+        stock_movement sm
+      JOIN 
+        product p ON sm.product_id = p.Product_ID
+      LEFT JOIN 
+        staff s ON sm.created_by = s.Staff_ID
+      ${whereClause}
+      ORDER BY 
+        sm.movement_date DESC
+      LIMIT ? OFFSET ?
+    `;
+    
+    params.push(parseInt(limit), offset);
+    
+    // Get count for pagination
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM stock_movement sm
+      JOIN product p ON sm.product_id = p.Product_ID
+      LEFT JOIN staff s ON sm.created_by = s.Staff_ID
+      ${whereClause}
+    `;
+    
+    const [movements] = await executeQuery(query, params);
+    const [countResult] = await executeQuery(countQuery, params.slice(0, -2));
+    
+    const totalCount = countResult[0]?.total || 0;
+    
+    // Format the data to match the frontend expectations
+    // Check if movements is defined and is an array before mapping
+    const formattedMovements = Array.isArray(movements) ? movements.map(movement => ({
+      id: movement.movement_id,
+      timestamp: movement.movement_date,
+      type: mapMovementType(movement.movement_type),
+      quantity: Math.abs(movement.quantity_change),
+      notes: movement.notes,
+      reference: movement.reference_id,
+      item: {
+        id: movement.product_id,
+        name: movement.product_name,
+        sku: movement.product_sku
+      },
+      performedBy: movement.user_name || 'System'
+    })) : [];
+    
+    res.status(200).json({
+      success: true,
+      data: formattedMovements,
+      pagination: {
+        total: totalCount,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(totalCount / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching stock movement history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve stock movement history',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Maps database movement types to frontend types
+ */
+function mapMovementType(dbType) {
+  switch (dbType) {
+    case 'SALE':
+      return 'out';
+    case 'PURCHASE':
+      return 'in';
+    case 'ADJUSTMENT':
+      return 'adjustment';
+    case 'RETURN':
+      return 'returned';
+    default:
+      return dbType.toLowerCase();
+  }
+}
+
+/**
+ * Record a stock movement (internal use)
+ */
+exports.recordStockMovement = async (connection, {
+  product_id,
+  quantity_change,
+  movement_type,
+  reference_id = null,
+  notes = null,
+  created_by = null
+}) => {
+  try {
+    if (!product_id || quantity_change === undefined || !movement_type) {
+      throw new Error('Missing required fields for stock movement');
+    }
+    
+    const query = `
+      INSERT INTO stock_movement 
+        (product_id, quantity_change, movement_type, reference_id, notes, created_by, movement_date)
+      VALUES
+        (?, ?, ?, ?, ?, ?, NOW())
+    `;
+    
+    const params = [product_id, quantity_change, movement_type, reference_id, notes, created_by];
+    
+    if (connection) {
+      await connection.query(query, params);
+    } else {
+      await executeQuery(query, params);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error recording stock movement:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get inventory forecast
+ */
+exports.getInventoryForecast = async (req, res) => {
+  try {
+    const { days = 30 } = req.query;
+    
+    // Calculate average daily consumption for each product
+    const query = `
+      SELECT 
+        p.Product_ID,
+        p.Name,
+        p.SKU,
+        i.Stock_Level,
+        i.Reorder_Level,
+        COALESCE(SUM(ABS(sm.quantity_change)) / NULLIF(COUNT(DISTINCT DATE(sm.movement_date)), 0), 0) as avg_daily_consumption
+      FROM 
+        inventory i
+      JOIN 
+        product p ON i.Product_ID = p.Product_ID
+      LEFT JOIN 
+        stock_movement sm ON p.Product_ID = sm.product_id AND sm.movement_type = 'SALE'
+        AND sm.movement_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+      GROUP BY 
+        p.Product_ID, p.Name, p.SKU, i.Stock_Level, i.Reorder_Level
+    `;
+    
+    const [rows] = await executeQuery(query);
+    
+    // Make sure we have valid data before mapping
+    if (!rows || !Array.isArray(rows)) {
+      return res.status(200).json({
+        success: true,
+        data: []
+      });
+    }
+    
+    // Calculate days until reorder needed
+    const forecasts = rows.map(item => ({
+      ...item,
+      days_until_reorder: item.avg_daily_consumption > 0 ? 
+        Math.floor((item.Stock_Level - item.Reorder_Level) / item.avg_daily_consumption) : 
+        null,
+      projected_stock: item.avg_daily_consumption > 0 ?
+        Math.max(0, item.Stock_Level - (item.avg_daily_consumption * parseInt(days))) :
+        item.Stock_Level
+    }));
+    
+    res.status(200).json({
+      success: true,
+      data: forecasts
+    });
+  } catch (error) {
+    console.error('Error generating inventory forecast:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate inventory forecast',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Generate purchase orders for low stock items
+ */
+exports.generatePurchaseOrders = async (req, res) => {
+  try {
+    // Find items needing reorder
+    const result = await executeQuery(`
+      SELECT 
+        p.Product_ID, p.Name, p.SKU, i.Stock_Level, i.Reorder_Level,
+        (i.Reorder_Level - i.Stock_Level) as needed,
+        s.Supplier_ID, s.Name as supplier_name
+      FROM 
+        inventory i
+      JOIN 
+        product p ON i.Product_ID = p.Product_ID
+      LEFT JOIN 
+        supplier s ON i.Supplier_ID = s.Supplier_ID
+      WHERE 
+        i.Stock_Level <= i.Reorder_Level AND i.Supplier_ID IS NOT NULL
+      ORDER BY 
+        s.Supplier_ID, needed DESC
+    `);
+    
+    // Ensure we have an array of low stock items
+    const lowStockItems = Array.isArray(result) ? result : (result && result[0] ? result[0] : []);
+    
+    if (!Array.isArray(lowStockItems) || lowStockItems.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No items need reordering at this time',
+        data: []
+      });
+    }
+    
+    // Group by supplier
+    const supplierGroups = {};
+    lowStockItems.forEach(item => {
+      if (!item || !item.Supplier_ID) return; // Skip invalid items
+      
+      if (!supplierGroups[item.Supplier_ID]) {
+        supplierGroups[item.Supplier_ID] = {
+          supplier_id: item.Supplier_ID,
+          supplier_name: item.supplier_name || 'Unknown Supplier',
+          items: []
+        };
+      }
+      supplierGroups[item.Supplier_ID].items.push({
+        product_id: item.Product_ID,
+        name: item.Name || 'Unknown Product',
+        sku: item.SKU || '',
+        quantity_to_order: Math.max(1, (item.needed || 1) * 2), // Order 2x the deficit as a buffer, at least 1
+        current_level: item.Stock_Level || 0
+      });
+    });
+    
+    res.status(200).json({
+      success: true,
+      data: Object.values(supplierGroups)
+    });
+  } catch (error) {
+    console.error('Error generating purchase orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate purchase orders',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get inventory categories
+ */
+exports.getInventoryCategories = async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        p.Category,
+        COUNT(*) as item_count,
+        SUM(i.Stock_Level) as total_items,
+        SUM(i.Stock_Level * p.Price) as total_value
+      FROM 
+        inventory i
+      JOIN 
+        product p ON i.Product_ID = p.Product_ID
+      GROUP BY 
+        p.Category
+      ORDER BY 
+        total_value DESC
+    `;
+    
+    const [categories] = await executeQuery(query);
+    
+    res.status(200).json({
+      success: true,
+      data: categories
+    });
+  } catch (error) {
+    console.error('Error fetching inventory categories:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve inventory categories',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Calculate inventory value
+ */
+exports.calculateInventoryValue = async (req, res) => {
+  try {
+    const { method = 'fifo' } = req.query;
+    
+    let valueQuery;
+    
+    switch (method.toLowerCase()) {
+      case 'fifo':
+        valueQuery = `
+          SELECT 
+            p.Product_ID, 
+            p.Name, 
+            p.SKU,
+            i.Stock_Level,
+            (SELECT COALESCE(SUM(ib.quantity * ib.cost_per_unit), 0)
+             FROM inventory_batch ib
+             WHERE ib.product_id = p.Product_ID
+             ORDER BY ib.received_date ASC
+             LIMIT 1) as inventory_value
+          FROM 
+            inventory i
+          JOIN 
+            product p ON i.Product_ID = p.Product_ID
+        `;
+        break;
+        
+      case 'lifo':
+        valueQuery = `
+          SELECT 
+            p.Product_ID, 
+            p.Name, 
+            p.SKU,
+            i.Stock_Level,
+            (SELECT COALESCE(SUM(ib.quantity * ib.cost_per_unit), 0)
+             FROM inventory_batch ib
+             WHERE ib.product_id = p.Product_ID
+             ORDER BY ib.received_date DESC
+             LIMIT 1) as inventory_value
+          FROM 
+            inventory i
+          JOIN 
+            product p ON i.Product_ID = p.Product_ID
+        `;
+        break;
+        
+      default: // Average cost
+        valueQuery = `
+          SELECT 
+            p.Product_ID, 
+            p.Name, 
+            p.SKU,
+            i.Stock_Level,
+            i.Stock_Level * (
+              SELECT COALESCE(AVG(cost_per_unit), 0)
+              FROM inventory_batch ib
+              WHERE ib.product_id = p.Product_ID
+            ) as inventory_value
+          FROM 
+            inventory i
+          JOIN 
+            product p ON i.Product_ID = p.Product_ID
+        `;
+    }
+    
+    const [inventoryValues] = await executeQuery(valueQuery);
+    
+    res.status(200).json({
+      success: true,
+      method,
+      data: inventoryValues
+    });
+  } catch (error) {
+    console.error('Error calculating inventory value:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to calculate inventory value',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Record stock count
+ */
+exports.recordStockCount = async (req, res) => {
+  try {
+    const { counts } = req.body;
+    
+    if (!Array.isArray(counts) || counts.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid count data is required'
+      });
+    }
+    
+    const results = [];
+    
+    for (const item of counts) {
+      const { product_id, counted_quantity, notes } = item;
+      
+      // Get current quantity
+      const [currentStock] = await executeQuery(
+        'SELECT Stock_Level FROM inventory WHERE Product_ID = ?', 
+        [product_id]
+      );
+      
+      if (currentStock.length === 0) {
+        results.push({
+          product_id,
+          status: 'error',
+          message: 'Product not found'
+        });
+        continue;
+      }
+      
+      const previousQuantity = currentStock[0].Stock_Level;
+      const discrepancy = counted_quantity - previousQuantity;
+      
+      // Update inventory
+      await executeQuery(
+        'UPDATE inventory SET Stock_Level = ?, Last_Updated = NOW() WHERE Product_ID = ?',
+        [counted_quantity, product_id]
+      );
+      
+      // Update product stock level
+      await executeQuery(
+        'UPDATE product SET Stock_Level = ? WHERE Product_ID = ?',
+        [counted_quantity, product_id]
+      );
+      
+      // Record adjustment
+      await executeQuery(
+        `INSERT INTO stock_movement 
+          (product_id, quantity_change, movement_type, notes, created_by, movement_date)
+        VALUES
+          (?, ?, ?, ?, ?, NOW())`,
+        [
+          product_id,
+          discrepancy,
+          'STOCKCOUNT',
+          notes || `Stock count adjustment: ${discrepancy > 0 ? '+' : ''}${discrepancy}`,
+          req.user?.userId || null
+        ]
+      );
+      
+      results.push({
+        product_id,
+        previous_quantity: previousQuantity,
+        counted_quantity,
+        discrepancy,
+        status: 'success'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Stock count recorded successfully',
+      data: results
+    });
+  } catch (error) {
+    console.error('Error recording stock count:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to record stock count',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get inventory audit log
+ */
+exports.getInventoryAuditLog = async (req, res) => {
+  try {
+    const { 
+      startDate, 
+      endDate, 
+      productId, 
+      username,
+      movementType,
+      page = 1, 
+      limit = 20 
+    } = req.query;
+    
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    let conditions = [];
+    const params = [];
+    
+    if (startDate && endDate) {
+      conditions.push('sm.movement_date BETWEEN ? AND ?');
+      params.push(startDate, endDate);
+    }
+    
+    if (productId) {
+      conditions.push('sm.product_id = ?');
+      params.push(productId);
+    }
+    
+    if (username) {
+      conditions.push('(CONCAT(s.first_name, " ", s.last_name) LIKE ?)');
+      params.push(`%${username}%`);
+    }
+    
+    if (movementType) {
+      conditions.push('sm.movement_type = ?');
+      params.push(movementType);
+    }
+    
+    const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+    
+    const query = `
+      SELECT 
+        sm.*,
+        p.Name as product_name,
+        p.SKU as product_sku,
+        CONCAT(s.first_name, ' ', s.last_name) as user_name
+      FROM 
+        stock_movement sm
+      JOIN 
+        product p ON sm.product_id = p.Product_ID
+      LEFT JOIN 
+        staff s ON sm.created_by = s.Staff_ID
+      ${whereClause}
+      ORDER BY 
+        sm.movement_date DESC
+      LIMIT ? OFFSET ?
+    `;
+    
+    params.push(parseInt(limit), offset);
+    
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM stock_movement sm
+      LEFT JOIN staff s ON sm.created_by = s.Staff_ID
+      ${whereClause}
+    `;
+    
+    const [movements] = await executeQuery(query, params);
+    const [countResult] = await executeQuery(countQuery, params.slice(0, -2));
+    
+    const totalCount = countResult[0]?.total || 0;
+    
+    res.status(200).json({
+      success: true,
+      data: movements,
+      pagination: {
+        total: totalCount,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(totalCount / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching inventory audit log:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve inventory audit log',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get inventory turnover report
+ */
+exports.getInventoryTurnoverReport = async (req, res) => {
+  try {
+    const { period = 90 } = req.query; // Days to analyze
+    
+    const query = `
+      SELECT 
+        p.Product_ID,
+        p.Name,
+        p.SKU,
+        i.Stock_Level as current_stock,
+        IFNULL(SUM(ABS(sm.quantity_change)), 0) as units_sold,
+        AVG(i.Stock_Level) as avg_inventory_level,
+        IFNULL(SUM(ABS(sm.quantity_change)), 0) / GREATEST(AVG(i.Stock_Level), 1) as turnover_rate,
+        COUNT(DISTINCT CASE WHEN sm.quantity_change < 0 THEN DATE(sm.movement_date) END) as days_with_sales
+      FROM 
+        inventory i
+      JOIN 
+        product p ON i.Product_ID = p.Product_ID
+      LEFT JOIN 
+        stock_movement sm ON p.Product_ID = sm.product_id 
+        AND sm.movement_type = 'SALE'
+        AND sm.movement_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+      GROUP BY 
+        p.Product_ID, p.Name, p.SKU, i.Stock_Level
+      ORDER BY 
+        turnover_rate DESC
+    `;
+    
+    const [turnoverData] = await executeQuery(query, [parseInt(period)]);
+    
+    // Calculate avg days to sell
+    const enrichedData = turnoverData.map(item => ({
+      ...item,
+      avg_days_to_sell: item.days_with_sales > 0 ? 
+        Math.round(parseInt(period) / item.days_with_sales) : null,
+      inventory_health: calculateInventoryHealth(item.turnover_rate, item.current_stock, item.units_sold)
+    }));
+    
+    res.status(200).json({
+      success: true,
+      period_days: parseInt(period),
+      data: enrichedData
+    });
+  } catch (error) {
+    console.error('Error generating inventory turnover report:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate inventory turnover report',
+      error: error.message
+    });
+  }
+};
+
+function calculateInventoryHealth(turnoverRate, currentStock, unitsSold) {
+  if (turnoverRate === 0) return 'Stagnant';
+  if (turnoverRate < 0.5) return 'Slow-moving';
+  if (turnoverRate > 3) return 'Fast-moving';
+  return 'Healthy';
+}
+
+/**
+ * Update inventory when items are received from a purchase order
+ * Route: POST /api/inventory/receive
+ */
+exports.receiveInventoryFromPurchaseOrder = async (req, res) => {
+  try {
+    const { product_id, quantity } = req.body;
+    
+    // Validate request data
+    if (!product_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product ID is required'
+      });
+    }
+    
+    if (!quantity || isNaN(quantity) || quantity <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid positive quantity is required'
+      });
+    }
+    
+    console.log(`Receiving ${quantity} units of product ID: ${product_id} from purchase order`);
+    
+    // Get current inventory for this product
+    const currentInventory = await executeQuery(
+      'SELECT * FROM inventory WHERE Product_ID = ?',
+      [product_id]
+    );
+    
+    let inventoryId;
+    let previousQuantity = 0;
+    
+    if (currentInventory && currentInventory.length > 0) {
+      // Inventory record exists, update it
+      inventoryId = currentInventory[0].Inventory_ID;
+      previousQuantity = currentInventory[0].Stock_Level || 0;
+      
+      // Update the inventory
+      await executeQuery(
+        'UPDATE inventory SET Stock_Level = Stock_Level + ?, Last_Updated = NOW() WHERE Product_ID = ?',
+        [quantity, product_id]
+      );
+    } else {
+      // No inventory record exists yet, check if product exists
+      const product = await executeQuery(
+        'SELECT * FROM product WHERE Product_ID = ?',
+        [product_id]
+      );
+      
+      if (!product || product.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Product not found'
+        });
+      }
+      
+      // Create new inventory record
+      const result = await executeQuery(
+        'INSERT INTO inventory (Product_ID, Stock_Level, Reorder_Level, Last_Updated) VALUES (?, ?, ?, NOW())',
+        [product_id, quantity, 10] // Default reorder level is 10
+      );
+      
+      inventoryId = result.insertId;
+    }
+    
+    // Record this stock movement
+    await executeQuery(
+      `INSERT INTO stock_movement (
+        product_id, 
+        quantity_change, 
+        movement_type, 
+        reference_id, 
+        notes, 
+        created_by,
+        previous_quantity, 
+        new_quantity
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        product_id,
+        quantity,
+        'PURCHASE_ORDER_RECEIVE',
+        null,
+        `Received from purchase order`,
+        null, // Set to NULL to avoid foreign key constraint issues
+        previousQuantity,
+        previousQuantity + parseInt(quantity)
+      ]
+    );
+    
+    // Get the updated inventory
+    const updatedInventory = await executeQuery(
+      'SELECT * FROM inventory WHERE Product_ID = ?',
+      [product_id]
+    );
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Inventory updated successfully',
+      data: {
+        product_id: parseInt(product_id),
+        previous_quantity: previousQuantity,
+        received_quantity: parseInt(quantity),
+        new_quantity: (previousQuantity + parseInt(quantity)),
+        inventory: updatedInventory[0]
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error receiving inventory from purchase order:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update inventory from purchase order',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Update inventory with partial fulfillment from a purchase order
+ * Route: POST /api/inventory/receive-partial
+ */
+exports.receivePartialInventory = async (req, res) => {
+  try {
+    const { product_id, actual_quantity, ordered_quantity } = req.body;
+    
+    if (!product_id || actual_quantity === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product ID and actual quantity are required'
+      });
+    }
+    
+    // Convert to integers to ensure we're working with numbers
+    const productId = parseInt(product_id);
+    const actualQuantity = parseInt(actual_quantity);
+    const orderedQuantity = parseInt(ordered_quantity || 0);
+    
+    if (actualQuantity < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Actual quantity cannot be negative'
+      });
+    }
+    
+    // Check if product exists
+    const productResult = await executeQuery(
+      'SELECT * FROM product WHERE Product_ID = ?',
+      [productId]
+    );
+    
+    if (!productResult || productResult.length === 0 || productResult[0].length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `Product with ID ${productId} not found`
+      });
+    }
+    
+    // Get current inventory for this product
+    const inventoryResult = await executeQuery(
+      'SELECT * FROM inventory WHERE Product_ID = ?',
+      [productId]
+    );
+    
+    let previousQuantity = 0;
+    
+    // Check if inventory records exist (considering correct result structure)
+    if (!inventoryResult || 
+        inventoryResult.length === 0 || 
+        !inventoryResult[0] || 
+        inventoryResult[0].length === 0) {
+      // Create new inventory record with actual received quantity
+      await executeQuery(
+        'INSERT INTO inventory (Product_ID, Stock_Level, Reorder_Level, Last_Updated) VALUES (?, ?, 10, NOW())',
+        [productId, actualQuantity]
+      );
+    } else {
+      // Get previous quantity before update, safely access the nested result
+      const inventoryItem = inventoryResult[0][0];
+      if (inventoryItem && typeof inventoryItem === 'object') {
+        previousQuantity = inventoryItem.Stock_Level || 0;
+      }
+      
+      // Update existing inventory record with actual received quantity
+      await executeQuery(
+        'UPDATE inventory SET Stock_Level = Stock_Level + ? WHERE Product_ID = ?',
+        [actualQuantity, productId]
+      );
+    }
+    
+    // Determine if this is a partial fulfillment (less than ordered)
+    const fulfillmentType = actualQuantity < orderedQuantity ? 'PARTIAL' : 
+                          actualQuantity > orderedQuantity ? 'EXCESS' : 'COMPLETE';
+    
+    // Record stock movement instead of inventory transaction
+    await executeQuery(
+      `INSERT INTO stock_movement (
+        product_id, 
+        quantity_change, 
+        movement_type, 
+        reference_id, 
+        notes, 
+        created_by,
+        previous_quantity, 
+        new_quantity
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        productId,
+        actualQuantity,
+        'PURCHASE_ORDER_PARTIAL',
+        req.body.po_id || null,
+        `${fulfillmentType} fulfillment: Received ${actualQuantity} of ${orderedQuantity} ordered units`,
+        null, // Set to NULL to avoid foreign key constraint issues
+        previousQuantity,
+        previousQuantity + actualQuantity
+      ]
+    );
+    
+    return res.status(200).json({
+      success: true,
+      message: `Added ${actualQuantity} units to product ID ${productId} (${fulfillmentType} fulfillment)`,
+      received_quantity: actualQuantity,
+      ordered_quantity: orderedQuantity,
+      fulfillment_type: fulfillmentType,
+      product_id: productId,
+      previous_quantity: previousQuantity,
+      new_quantity: previousQuantity + actualQuantity
+    });
+  } catch (error) {
+    console.error('Error receiving partial inventory:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update inventory with partial fulfillment',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get a combined view of inventory and product data with pagination, search, and filtering
+ */
+exports.getCombinedInventory = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10, 
+      search = '', 
+      category = '', 
+      sortBy = 'name',
+      sortOrder = 'asc' 
+    } = req.query;
+    
+    const offset = (page - 1) * parseInt(limit);
+    
+    // Build search conditions
+    let searchCondition = '';
+    let categoryCondition = '';
+    const queryParams = [];
+    
+    if (search) {
+      searchCondition = `AND (
+        p.Name LIKE ? OR 
+        p.SKU LIKE ? OR 
+        p.Description LIKE ?
+      )`;
+      const searchPattern = `%${search}%`;
+      queryParams.push(searchPattern, searchPattern, searchPattern);
+    }
+    
+    if (category) {
+      categoryCondition = `AND p.Category = ?`;
+      queryParams.push(category);
+    }
+    
+    // Determine sort field mapping
+    let sortField = 'p.Name';
+    switch(sortBy.toLowerCase()) {
+      case 'name':
+        sortField = 'p.Name';
+        break;
+      case 'sku':
+        sortField = 'p.SKU';
+        break;
+      case 'stock':
+      case 'stock_level':
+        sortField = 'i.Stock_Level';
+        break;
+      case 'category':
+        sortField = 'p.Category';
+        break;
+      case 'price':
+        sortField = 'p.Price';
+        break;
+      default:
+        sortField = 'p.Name';
+    }
+    
+    // Build the query
+    const query = `
+      SELECT 
+        p.Product_ID,
+        p.Name,
+        p.SKU,
+        p.Description,
+        p.Category,
+        p.Subcategory,
+        p.Brand,
+        p.Manufacturer,
+        p.Price,
+        p.cost_price,
+        p.Image_URL,
+        p.image_public_id,
+        p.Status,
+        p.unit_of_measure,
+        i.Inventory_ID,
+        i.Stock_Level,
+        i.reorder_level,
+        i.optimal_level,
+        i.bin_location,
+        i.warehouse_zone,
+        i.inventory_value_method,
+        i.reorder_quantity,
+        i.storage_location,
+        i.unit_of_measure as inventory_unit,
+        s.Name as supplier_name,
+        s.Supplier_ID as supplier_id
+      FROM 
+        product p
+      LEFT JOIN 
+        inventory i ON p.Product_ID = i.Product_ID
+      LEFT JOIN 
+        supplier s ON i.Supplier_ID = s.Supplier_ID
+      WHERE 
+        1=1 ${searchCondition} ${categoryCondition}
+      ORDER BY 
+        ${sortField} ${sortOrder === 'desc' ? 'DESC' : 'ASC'}
+      LIMIT ? OFFSET ?
+    `;
+    
+    // Add pagination params
+    queryParams.push(parseInt(limit), offset);
+    
+    // Execute queries
+    const [items] = await executeQuery(query, queryParams);
+    
+    // Count total items for pagination
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM product p 
+      LEFT JOIN inventory i ON p.Product_ID = i.Product_ID
+      WHERE 1=1 ${searchCondition} ${categoryCondition}
+    `;
+    
+    const [countResult] = await executeQuery(countQuery, queryParams.slice(0, -2));
+    const total = countResult[0]?.total || 0;
+    
+    // Return data with pagination info
+    res.status(200).json({
+      success: true,
+      data: items,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error fetching combined inventory data:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch inventory data',
+      error: error.message
+    });
+  }
+};

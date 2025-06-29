@@ -40,7 +40,7 @@ function validateLoginForm(values) {
  * @param {Object} values - Form values
  * @param {Function} setIsSubmitting - Function to set submission state
  * @param {Function} setError - Function to set error message
- * @param {Object} auth - Auth context object with loginOwner method
+ * @param {Object} auth - Auth context object with ownerLogin method
  * @param {Function} navigate - Navigate function for redirection
  * @returns {Promise<void>}
  */
@@ -48,8 +48,32 @@ function handleOwnerLogin(values, setIsSubmitting, setError, auth, navigate) {
   setIsSubmitting(true);
   setError('');
   
-  return auth.loginOwner(values.email, values.password)
-    .then(() => {
+  console.log('[OwnerLogin] Starting login process...');
+  
+  return auth.ownerLogin(values.email, values.password)
+    .then((result) => {
+      console.log('[OwnerLogin] Login successful, checking localStorage:', result);
+      
+      // Debug localStorage state after login
+      console.log('[OwnerLogin] localStorage after login:', {
+        authToken: localStorage.getItem('authToken') ? 'exists' : 'missing',
+        userData: localStorage.getItem('user'),
+        parsedUser: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null
+      });
+      
+      // Force save user data if it's missing
+      if (!localStorage.getItem('user') && result) {
+        console.log('[OwnerLogin] User data missing, saving manually:', result);
+        const userData = {
+          owner_id: result.owner_id || result.id || result._id,
+          name: result.name || `${result.first_name || ''} ${result.last_name || ''}`.trim(),
+          email: values.email,
+          role: 'owner',
+          type: 'owner'
+        };
+        localStorage.setItem('user', JSON.stringify(userData));
+      }
+      
       navigate('/owner/dashboard'); // Explicitly navigate to owner dashboard
     })
     .catch(err => {
@@ -110,10 +134,10 @@ function OwnerLogin() {
       return;
     }
     
-    // Make sure auth.loginOwner is available
-    if (typeof auth.loginOwner !== 'function') {
+    // Make sure auth.ownerLogin is available
+    if (typeof auth.ownerLogin !== 'function') {
       setError('Login functionality is not available. Please try again later.');
-      console.error('loginOwner is not a function in auth context:', auth);
+      console.error('ownerLogin is not a function in auth context:', auth);
       return;
     }
     

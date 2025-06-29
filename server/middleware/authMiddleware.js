@@ -14,7 +14,11 @@ function protect(req, res, next) {
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
     
+    console.log('Auth middleware - Headers received:', Object.keys(req.headers));
+    console.log('Auth middleware - Auth header:', authHeader);
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('Auth middleware - No Bearer token found');
       return res.status(401).json({
         success: false,
         message: 'Authentication required'
@@ -22,10 +26,19 @@ function protect(req, res, next) {
     }
     
     const token = authHeader.split(' ')[1];
+    console.log('Auth middleware - Token found:', token.substring(0, 10) + '...');
     
     // Verify token
     jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, decoded) => {
       if (err) {
+        console.log('Auth middleware - Token verification failed:', err.message);
+        console.log('Auth middleware - JWT_SECRET:', process.env.JWT_SECRET ? 'exists (hidden)' : 'not set, using default');
+        console.log('Auth middleware - Error details:', {
+          name: err.name,
+          message: err.message,
+          expiredAt: err.expiredAt // If token expired
+        });
+        
         return res.status(401).json({
           success: false,
           message: 'Invalid token',
@@ -33,14 +46,18 @@ function protect(req, res, next) {
         });
       }
       
-      // Add user data to request
-      req.user = decoded;
+      console.log('Auth middleware - Token verified successfully, user ID:', decoded.userId || decoded.id);
       
-      // Removed the console.log that was showing user data
+      // Add user data to request - ensure we handle various user ID formats
+      req.user = {
+        userId: decoded.userId || decoded.id || decoded.owner_id,
+        role: decoded.role,
+        email: decoded.email
+      };
+      
       next();
     });
   } catch (error) {
-    // Keep error logging for debugging auth issues
     console.error('Auth middleware error:', error);
     return res.status(500).json({
       success: false,

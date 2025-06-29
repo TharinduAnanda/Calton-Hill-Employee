@@ -64,6 +64,77 @@
   padding-bottom: 1rem;
 }
 
+/* Stats Container - UPDATED for horizontal layout */
+.stats-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 16px;
+  margin-bottom: 24px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+/* Stat Cards - UPDATED for horizontal layout */
+.stat-card {
+  background-color: #fff;
+  border-radius: var(--border-radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid #edf2f7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-width: 240px;
+  flex: 1 0 auto;
+  transition: var(--transition-standard);
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.card-content {
+  flex: 1;
+}
+
+.card-content h4 {
+  color: #64748b;
+  font-size: 14px;
+  margin: 0 0 8px 0;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.metric-change {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.positive {
+  color: #10b981;
+}
+
+.negative {
+  color: #ef4444;
+}
+
+.metric-change span {
+  margin-left: 4px;
+}
+
 /* Feature Cards */
 .feature-card {
   border-radius: var(--border-radius-md);

@@ -5,12 +5,34 @@ const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Apply authentication middleware to all routes
+// Diagnostic route - doesn't require authentication
+router.get('/status', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Financial API is accessible',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Debug route - no authentication
+router.get('/debug', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Financial routes are accessible',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Apply authentication middleware to all routes except debug and status
 router.use(protect);
 
 // Financial summary and reports
 router.get('/summary', financialController.getFinancialSummary);
 router.get('/report', financialController.generateFinancialReport);
+router.get('/balance-sheet', financialController.getBalanceSheet);
+router.get('/cash-flow', financialController.getCashFlowStatement);
+router.get('/department-profitability', financialController.getDepartmentProfitability);
+router.get('/metrics', financialController.getFinancialMetrics);
 
 // Transactions
 router.get('/transactions', financialController.getSalesTransactions);

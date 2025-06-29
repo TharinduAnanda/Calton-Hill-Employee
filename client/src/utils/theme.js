@@ -5,122 +5,139 @@ const theme = {
   // Color palette
   colors: {
     primary: {
-      main: '#1976d2',
-      light: '#42a5f5',
-      dark: '#0d47a1',
+      main: '#2563eb', // Vibrant blue
+      light: '#60a5fa',
+      dark: '#1e40af',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#f50057',
-      light: '#ff4081',
-      dark: '#c51162',
+      main: '#7c3aed', // Purple
+      light: '#a78bfa',
+      dark: '#5b21b6',
       contrastText: '#ffffff',
     },
     success: {
-      main: '#4caf50',
-      light: '#81c784',
-      dark: '#388e3c',
+      main: '#10b981', // Modern green
+      light: '#34d399',
+      dark: '#059669',
+      contrastText: '#ffffff',
     },
     error: {
-      main: '#f44336',
-      light: '#e57373',
-      dark: '#d32f2f',
+      main: '#ef4444', // Modern red
+      light: '#f87171',
+      dark: '#b91c1c',
+      contrastText: '#ffffff',
     },
     warning: {
-      main: '#ff9800',
-      light: '#ffb74d',
-      dark: '#f57c00',
+      main: '#f59e0b', // Modern amber
+      light: '#fbbf24',
+      dark: '#d97706',
+      contrastText: '#ffffff',
     },
     info: {
-      main: '#2196f3',
-      light: '#64b5f6',
-      dark: '#1976d2',
+      main: '#3b82f6', // Light blue
+      light: '#93c5fd',
+      dark: '#2563eb',
+      contrastText: '#ffffff',
     },
     grey: {
-      50: '#fafafa',
-      100: '#f5f5f5',
-      200: '#eeeeee',
-      300: '#e0e0e0',
-      400: '#bdbdbd',
-      500: '#9e9e9e',
-      600: '#757575',
-      700: '#616161',
-      800: '#424242',
-      900: '#212121',
+      50: '#f9fafb',
+      100: '#f3f4f6',
+      200: '#e5e7eb',
+      300: '#d1d5db',
+      400: '#9ca3af',
+      500: '#6b7280',
+      600: '#4b5563',
+      700: '#374151',
+      800: '#1f2937',
+      900: '#111827',
     },
     text: {
-      primary: 'rgba(0, 0, 0, 0.87)',
-      secondary: 'rgba(0, 0, 0, 0.6)',
-      disabled: 'rgba(0, 0, 0, 0.38)',
+      primary: '#1f2937', // Darker, more readable text
+      secondary: '#4b5563',
+      disabled: '#9ca3af',
     },
     background: {
       default: '#ffffff',
       paper: '#ffffff',
-      light: '#f5f5f5',
+      light: '#f9fafb',
+      subtle: '#f3f4f6', // Light gray background for sections
+      card: '#ffffff',
+      dark: '#111827', // For dark mode or dark sections
     },
-    divider: 'rgba(0, 0, 0, 0.12)',
+    divider: 'rgba(0, 0, 0, 0.08)',
   },
 
-  // Typography settings
+  // Typography settings - more modern with variable font weight
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    fontSize: 14,
+    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontSize: 16,
     fontWeightLight: 300,
     fontWeightRegular: 400,
     fontWeightMedium: 500,
-    fontWeightBold: 700,
+    fontWeightBold: 600, // Less heavy bold for modern look
+    fontWeightExtraBold: 700,
     h1: {
       fontSize: '2.5rem',
-      fontWeight: 300,
+      fontWeight: 600,
       lineHeight: 1.2,
+      letterSpacing: '-0.025em',
     },
     h2: {
       fontSize: '2rem',
-      fontWeight: 300,
-      lineHeight: 1.2,
+      fontWeight: 600,
+      lineHeight: 1.25,
+      letterSpacing: '-0.02em',
     },
     h3: {
       fontSize: '1.75rem',
-      fontWeight: 400,
-      lineHeight: 1.2,
+      fontWeight: 600,
+      lineHeight: 1.3,
+      letterSpacing: '-0.015em',
     },
     h4: {
       fontSize: '1.5rem',
-      fontWeight: 400,
-      lineHeight: 1.2,
+      fontWeight: 600,
+      lineHeight: 1.35,
+      letterSpacing: '-0.01em',
     },
     h5: {
       fontSize: '1.25rem',
-      fontWeight: 400,
-      lineHeight: 1.2,
+      fontWeight: 600,
+      lineHeight: 1.4,
     },
     h6: {
       fontSize: '1rem',
-      fontWeight: 500,
-      lineHeight: 1.2,
+      fontWeight: 600,
+      lineHeight: 1.45,
     },
     body1: {
       fontSize: '1rem',
       fontWeight: 400,
-      lineHeight: 1.5,
+      lineHeight: 1.6,
     },
     body2: {
       fontSize: '0.875rem',
       fontWeight: 400,
-      lineHeight: 1.43,
+      lineHeight: 1.57,
     },
     button: {
       fontSize: '0.875rem',
       fontWeight: 500,
       lineHeight: 1.75,
-      textTransform: 'uppercase',
+      textTransform: 'none', // More modern to not use all caps for buttons
+    },
+    caption: {
+      fontSize: '0.75rem',
+      fontWeight: 400,
+      lineHeight: 1.5,
     },
   },
 
-  // Spacing
-  spacing: (factor) => `${0.5 * factor}rem`,
+  // Spacing - more consistent but slightly larger for better breathing room
+  spacing: (factor) => `${0.6 * factor}rem`,
 
-  // Breakpoints
+  // Breakpoints - keeping same breakpoints
   breakpoints: {
     xs: 0,
     sm: 600,
@@ -129,21 +146,25 @@ const theme = {
     xl: 1920,
   },
 
-  // Shadows
+  // Shadows - more subtle for modern look
   shadows: [
     'none',
-    '0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12)',
-    '0px 3px 1px -2px rgba(0,0,0,0.2),0px 2px 2px 0px rgba(0,0,0,0.14),0px 1px 5px 0px rgba(0,0,0,0.12)',
-    '0px 3px 3px -2px rgba(0,0,0,0.2),0px 3px 4px 0px rgba(0,0,0,0.14),0px 1px 8px 0px rgba(0,0,0,0.12)',
-    '0px 2px 4px -1px rgba(0,0,0,0.2),0px 4px 5px 0px rgba(0,0,0,0.14),0px 1px 10px 0px rgba(0,0,0,0.12)',
+    '0px 1px 2px rgba(0, 0, 0, 0.05)',
+    '0px 1px 3px rgba(0, 0, 0, 0.1), 0px 1px 2px -1px rgba(0, 0, 0, 0.1)',
+    '0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -2px rgba(0, 0, 0, 0.1)',
+    '0px 10px 15px -3px rgba(0, 0, 0, 0.1), 0px 4px 6px -4px rgba(0, 0, 0, 0.1)',
+    '0px 20px 25px -5px rgba(0, 0, 0, 0.1), 0px 8px 10px -6px rgba(0, 0, 0, 0.1)',
   ],
 
-  // Border radius
+  // Border radius - more rounded for modern look
   shape: {
-    borderRadius: 4,
+    borderRadius: 8,
+    borderRadiusSmall: 6,
+    borderRadiusLarge: 12,
+    borderRadiusFull: '9999px',
   },
 
-  // Transitions
+  // Transitions - enhanced for smoother feel
   transitions: {
     easing: {
       easeInOut: 'cubic-bezier(0.4, 0, 0.2, 1)',
@@ -171,6 +192,22 @@ const theme = {
     snackbar: 1400,
     tooltip: 1500,
   },
+  
+  // Additional modern UI elements
+  components: {
+    card: {
+      elevation: 0,
+      border: `1px solid rgba(0, 0, 0, 0.05)`,
+      hoverEffect: 'transform: translateY(-4px); box-shadow: 0px 10px 15px -3px rgba(0, 0, 0, 0.1)',
+      transitionDuration: '0.3s',
+    },
+    button: {
+      borderRadius: 8,
+      fontWeight: 500,
+      boxShadow: 'none',
+      hoverEffect: 'transform: translateY(-1px)',
+    },
+  }
 };
 
 export default theme;
@@ -190,4 +227,19 @@ export const getBreakpoint = (size) => {
 
 export const getMediaQuery = (size) => {
   return `@media (min-width: ${getBreakpoint(size)})`;
+};
+
+// New helper functions for modern styling
+export const getElevation = (level = 1) => {
+  return theme.shadows[level] || theme.shadows[1];
+};
+
+export const getBorderRadius = (size = 'default') => {
+  const radiusMap = {
+    small: theme.shape.borderRadiusSmall,
+    default: theme.shape.borderRadius,
+    large: theme.shape.borderRadiusLarge,
+    full: theme.shape.borderRadiusFull
+  };
+  return radiusMap[size] || radiusMap.default;
 };

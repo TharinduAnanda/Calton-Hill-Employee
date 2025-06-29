@@ -24,7 +24,7 @@ function StaffLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { loginStaff } = useAuth(); // Changed from { login } to { loginStaff }
+  const { staffLogin } = useAuth();
 
   /**
    * Handle input change events
@@ -73,6 +73,8 @@ function StaffLogin() {
     setLoading(true);
     setError('');
     
+    console.log('[StaffLogin] Starting login process...');
+    
     try {
       // First, check if the staff credentials are valid using authService
       const isStaffValid = await authService.verifyStaff(formData.email);
@@ -83,8 +85,33 @@ function StaffLogin() {
         return;
       }
       
-      // Now try to login using loginStaff instead of login
-      await loginStaff(formData.email, formData.password);
+      // Use staffLogin consistently
+      const result = await staffLogin(formData.email, formData.password);
+      
+      console.log('[StaffLogin] Login successful, checking localStorage:', result);
+      
+      // Debug localStorage state after login
+      console.log('[StaffLogin] localStorage after login:', {
+        authToken: localStorage.getItem('authToken') ? 'exists' : 'missing',
+        userData: localStorage.getItem('user'),
+        parsedUser: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null
+      });
+      
+      // Force save user data if it's missing
+      if (!localStorage.getItem('user') && result) {
+        console.log('[StaffLogin] User data missing, saving manually:', result);
+        const userData = {
+          id: result.staff_id || result.id || result._id,
+          owner_id: result.owner_id || result.Owner_ID || result.ownerId,
+          first_name: result.first_name || result.firstName || (result.name ? result.name.split(' ')[0] : ''),
+          last_name: result.last_name || result.lastName || (result.name ? result.name.split(' ').slice(1).join(' ') : ''),
+          email: formData.email,
+          role: result.role || 'staff',
+          type: 'staff'
+        };
+        localStorage.setItem('user', JSON.stringify(userData));
+      }
+      
       navigate('/staff/dashboard');
     } catch (err) {
       console.error('Login error:', err);

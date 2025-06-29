@@ -18,9 +18,28 @@ const Navbar = ({ unreadNotificationCount, onControlCenterToggle }) => {
     day: 'numeric' 
   });
 
+  // Function to get the user's display name based on their role and available properties
+  const getUserDisplayName = () => {
+    if (!currentUser) return 'User';
+    
+    if (currentUser.type === 'owner' || currentUser.role === 'owner') {
+      return currentUser.name || 'Owner';
+    } else {
+      // For staff members
+      if (currentUser.first_name) {
+        return currentUser.first_name;
+      } else if (currentUser.name) {
+        return currentUser.name.split(' ')[0]; // Get first name from full name
+      }
+      return 'Staff';
+    }
+  };
+
   const handleLogout = () => {
     logout();
-    navigate('/');
+    // Skip React Router navigation and use direct browser navigation
+    // This prevents any intermediate screens from showing
+    window.location.replace('/');
   };
 
   const toggleMenu = () => {
@@ -32,39 +51,57 @@ const Navbar = ({ unreadNotificationCount, onControlCenterToggle }) => {
     setIsProfileDropdownOpen(!isProfileDropdownOpen);
     if (isMenuOpen) setIsMenuOpen(false);
   };
+  
+  // Get the appropriate inventory link based on user role
+  const getInventoryPath = () => {
+    if (currentUser?.role === 'owner') {
+      return '/owner/inventory';
+    } else {
+      return '/inventory';
+    }
+  };
+
+  // Handle navigation with proper replace
+  const handleNavigation = (path) => {
+    // Use direct navigation
+    window.location.href = path;
+  };
 
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <Link to="/dashboard" className="navbar-logo">
+        <Link to="/dashboard" className="navbar-logo" onClick={(e) => {
+          e.preventDefault();
+          window.location.href = '/dashboard';
+        }}>
           <FaWarehouse className="logo-icon" />
           <span>Calton Hill</span>
         </Link>
         
         {/* Welcome Message */}
         <div className="welcome-message">
-          <span>Welcome back, {currentUser?.name || 'Owner'}!</span>
+          <span>Welcome back, {getUserDisplayName()}!</span>
           <span className="date-display">Today is {formattedDate}</span>
         </div>
 
         {/* Desktop Navigation */}
         <div className="desktop-menu">
           <div className="nav-links">
-            <Link to="/dashboard" className="nav-link">
+            <button onClick={() => handleNavigation('/dashboard')} className="nav-link">
               Dashboard
-            </Link>
-            <Link to="/products" className="nav-link">
+            </button>
+            <button onClick={() => handleNavigation('/products')} className="nav-link">
               Products
-            </Link>
-            <Link to="/inventory" className="nav-link">
+            </button>
+            <button onClick={() => handleNavigation(getInventoryPath())} className="nav-link">
               Inventory
-            </Link>
-            <Link to="/suppliers" className="nav-link">
+            </button>
+            <button onClick={() => handleNavigation('/suppliers')} className="nav-link">
               Suppliers
-            </Link>
-            <Link to="/orders" className="nav-link">
+            </button>
+            <button onClick={() => handleNavigation('/orders')} className="nav-link">
               Orders
-            </Link>
+            </button>
           </div>
         </div>
 
@@ -89,7 +126,7 @@ const Navbar = ({ unreadNotificationCount, onControlCenterToggle }) => {
           
           <div className="profile-menu">
             <button onClick={toggleProfileDropdown} className="profile-button">
-              <span className="user-name">{currentUser?.name || 'User'}</span>
+              <span className="user-name">{getUserDisplayName()}</span>
               <div className="avatar">
                 <FaUser />
               </div>
@@ -97,14 +134,14 @@ const Navbar = ({ unreadNotificationCount, onControlCenterToggle }) => {
 
             {isProfileDropdownOpen && (
               <div className="dropdown">
-                <Link to="/profile" className="dropdown-link" onClick={() => setIsProfileDropdownOpen(false)}>
+                <button className="dropdown-link" onClick={() => handleNavigation('/profile')}>
                   <FaUserCircle />
                   Your Profile
-                </Link>
-                <Link to="/settings" className="dropdown-link" onClick={() => setIsProfileDropdownOpen(false)}>
+                </button>
+                <button className="dropdown-link" onClick={() => handleNavigation('/settings')}>
                   <FaCog />
                   Settings
-                </Link>
+                </button>
                 <div className="dropdown-divider"></div>
                 <button onClick={handleLogout} className="signout-btn">
                   <FaSignOutAlt style={{ marginRight: '0.75rem' }} />
@@ -124,21 +161,21 @@ const Navbar = ({ unreadNotificationCount, onControlCenterToggle }) => {
       {/* Mobile menu */}
       {isMenuOpen && (
         <div className="mobile-menu">
-          <Link to="/dashboard" className="mobile-link" onClick={toggleMenu}>
+          <button className="mobile-link" onClick={() => handleNavigation('/dashboard')}>
             Dashboard
-          </Link>
-          <Link to="/products" className="mobile-link" onClick={toggleMenu}>
+          </button>
+          <button className="mobile-link" onClick={() => handleNavigation('/products')}>
             Products
-          </Link>
-          <Link to="/inventory" className="mobile-link" onClick={toggleMenu}>
+          </button>
+          <button className="mobile-link" onClick={() => handleNavigation(getInventoryPath())}>
             Inventory
-          </Link>
-          <Link to="/suppliers" className="mobile-link" onClick={toggleMenu}>
+          </button>
+          <button className="mobile-link" onClick={() => handleNavigation('/suppliers')}>
             Suppliers
-          </Link>
-          <Link to="/orders" className="mobile-link" onClick={toggleMenu}>
+          </button>
+          <button className="mobile-link" onClick={() => handleNavigation('/orders')}>
             Orders
-          </Link>
+          </button>
           
           {/* Add Control Center for mobile */}
           {currentUser?.role === 'owner' && (
@@ -157,14 +194,14 @@ const Navbar = ({ unreadNotificationCount, onControlCenterToggle }) => {
 
           <div className="mobile-divider"></div>
 
-          <Link to="/profile" className="mobile-link" onClick={toggleMenu}>
+          <button className="mobile-link" onClick={() => handleNavigation('/profile')}>
             <FaUserCircle style={{ marginRight: '0.75rem' }} />
             Your Profile
-          </Link>
-          <Link to="/settings" className="mobile-link" onClick={toggleMenu}>
+          </button>
+          <button className="mobile-link" onClick={() => handleNavigation('/settings')}>
             <FaCog style={{ marginRight: '0.75rem' }} />
             Settings
-          </Link>
+          </button>
           <button
             onClick={() => {
               handleLogout();

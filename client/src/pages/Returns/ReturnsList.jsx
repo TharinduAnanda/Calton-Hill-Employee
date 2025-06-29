@@ -34,7 +34,8 @@ import {
   BarChart as BarChartIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
-import axios from '../../utils/axiosConfig';
+// import axios from '../../utils/axiosConfig';
+import mockReturnsService from '../../services/mockReturnsService';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -53,7 +54,11 @@ const ReturnsList = () => {
     endDate: null
   });
   const [tabValue, setTabValue] = useState(0);
-  const [statistics, setStatistics] = useState(null);
+  const [statistics, setStatistics] = useState({
+    total_returns: 0,
+    total_refund_amount: 0,
+    status_distribution: []
+  });
 
   // Define tabs
   const tabs = [
@@ -102,24 +107,50 @@ const ReturnsList = () => {
         queryParams.endDate = format(filters.endDate, 'yyyy-MM-dd');
       }
       
-      const response = await axios.get('/api/returns', { params: queryParams });
+      // Use mock service instead of real API call
+      const response = await mockReturnsService.getReturns(queryParams);
       
-      setReturns(response.data.data);
-      setTotalCount(response.data.pagination.total);
+      // Make sure response has the expected data structure
+      if (response.data && response.data.data) {
+        setReturns(response.data.data);
+        setTotalCount(response.data.pagination?.total || 0);
+      } else {
+        setReturns([]);
+        setTotalCount(0);
+      }
       setLoading(false);
     } catch (err) {
       console.error('Error fetching returns:', err);
       setError('Failed to fetch returns. Please try again.');
+      setReturns([]);
       setLoading(false);
     }
   };
 
   const fetchReturnStatistics = async () => {
     try {
-      const response = await axios.get('/api/returns/statistics');
-      setStatistics(response.data.data);
+      // Use mock service instead of real API call
+      const response = await mockReturnsService.getReturnStatistics();
+      
+      // Make sure response has the expected data structure
+      if (response.data && response.data.data) {
+        setStatistics(response.data.data);
+      } else {
+        // Set default values if data is missing
+        setStatistics({
+          total_returns: 0,
+          total_refund_amount: 0,
+          status_distribution: []
+        });
+      }
     } catch (err) {
       console.error('Error fetching return statistics:', err);
+      // Set default values if request fails
+      setStatistics({
+        total_returns: 0,
+        total_refund_amount: 0,
+        status_distribution: []
+      });
     }
   };
 
@@ -217,14 +248,18 @@ const ReturnsList = () => {
                   Status Distribution
                 </Typography>
                 <Box display="flex" gap={2}>
-                  {statistics.status_distribution.map((item) => (
-                    <Chip
-                      key={item.status}
-                      label={`${item.status}: ${item.count}`}
-                      color={getStatusColor(item.status)}
-                      variant="outlined"
-                    />
-                  ))}
+                  {statistics.status_distribution && statistics.status_distribution.map ? (
+                    statistics.status_distribution.map((item) => (
+                      <Chip
+                        key={item.status}
+                        label={`${item.status}: ${item.count}`}
+                        color={getStatusColor(item.status)}
+                        variant="outlined"
+                      />
+                    ))
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">No status data available</Typography>
+                  )}
                 </Box>
               </Paper>
             </Grid>
@@ -320,7 +355,7 @@ const ReturnsList = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {returns.map((returnItem) => (
+                {Array.isArray(returns) ? returns.map((returnItem) => (
                   <TableRow key={returnItem.return_id}>
                     <TableCell>#{returnItem.return_id}</TableCell>
                     <TableCell>#{returnItem.order_id}</TableCell>
@@ -368,7 +403,13 @@ const ReturnsList = () => {
                       )}
                     </TableCell>
                   </TableRow>
-                ))}
+                )) : (
+                  <TableRow>
+                    <TableCell colSpan={8}>
+                      <Alert severity="warning">Invalid data format received from server</Alert>
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </TableContainer>

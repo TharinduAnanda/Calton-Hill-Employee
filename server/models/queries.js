@@ -32,10 +32,10 @@ const inventoryQueries = {
 const productQueries = {
   getAllProducts: 'SELECT * FROM product',
   getProductById: 'SELECT * FROM product WHERE Product_ID = ?',
-  createProduct: 'INSERT INTO product (Name, Category, Stock_Level, Manufacturer, Image_URL, Supplier_ID, Price, image_public_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-  updateProduct: 'UPDATE product SET Name = ?, Category = ?, Stock_Level = ?, Manufacturer = ?, Image_URL = ?, Supplier_ID = ?, Price = ? WHERE Product_ID = ?',
+  createProduct: 'INSERT INTO product (Name, Description, SKU, Category, Stock_Level, Manufacturer, Brand, cost_price, Image_URL, Supplier_ID, Price, image_public_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  updateProduct: 'UPDATE product SET Name = ?, Description = ?, SKU = ?, Category = ?, Stock_Level = ?, Manufacturer = ?, Brand = ?, cost_price = ?, Image_URL = ?, Supplier_ID = ?, Price = ?, image_public_id = ? WHERE Product_ID = ?',
   deleteProduct: 'DELETE FROM product WHERE Product_ID = ?',
-  searchProducts: 'SELECT * FROM product WHERE Name LIKE ? OR Category LIKE ? OR Manufacturer LIKE ?'
+  searchProducts: 'SELECT * FROM product WHERE Name LIKE ? OR Category LIKE ? OR Manufacturer LIKE ? OR Brand LIKE ?'
 };
 
 // Supplier queries

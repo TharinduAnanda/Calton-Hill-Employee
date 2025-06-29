@@ -27,7 +27,7 @@ router.get('/dashboard', requireRole(['owner', 'manager']), marketingController.
 
 // Loyalty program routes
 router.get('/loyalty/settings', requireRole(['owner', 'manager']), marketingController.getLoyaltySettings);
-router.put('/loyalty/settings', requireRole(['owner']), marketingController.updateLoyaltySettings);
+router.put('/loyalty/settings', requireRole(['owner', 'manager']), marketingController.updateLoyaltySettings);
 router.get('/loyalty/members', requireRole(['owner', 'manager', 'staff']), marketingController.getLoyaltyMembers);
 router.get('/loyalty/members/:memberId/history', requireRole(['owner', 'manager', 'staff']), marketingController.getMemberPointsHistory);
 router.get('/loyalty/rewards', requireRole(['owner', 'manager', 'staff']), marketingController.getLoyaltyRewards);

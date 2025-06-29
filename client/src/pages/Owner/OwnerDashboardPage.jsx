@@ -19,6 +19,7 @@ import {
   SwapHoriz as SwapHorizIcon,
   Info as InfoIcon,
   Category as ProductsIcon, // Added ProductsIcon
+  Assessment as AssessmentIcon,
 } from '@mui/icons-material';
 import LineChartComponent from '../../components/common/LineChartComponent';
 import ControlCenter from './ControlCenter';
@@ -30,6 +31,15 @@ import InventoryManagement from '../Inventory/InventoryManagement';
 import ReturnsList from '../Returns/ReturnsList';
 import ProductsPage from '../Products/ProductsPage';
 import MarketingDashboard from '../Marketing/MarketingDashboard'; // Import the existing ProductsPage component
+import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import EmailCampaigns from '../Marketing/EmailCampaigns';
+import CampaignManagement from '../Marketing/CampaignManagement';
+import LoyaltyProgram from '../Marketing/LoyaltyProgram';
+import PromotionsManager from '../Marketing/PromotionsManager';
+import MarketingAnalytics from '../Marketing/MarketingAnalytics';
+import ReportsDashboard from '../Reports/ReportsDashboard';
+import TurnoverReportPage from '../Reports/TurnoverReportPage';
 
 const DashboardOverview = ({ stats }) => {
   return (
@@ -248,6 +258,8 @@ const OwnerDashboardPage = () => {
     monthlyVisitors: 0,
     conversionRate: 0
   });
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     setTimeout(() => {
@@ -322,7 +334,25 @@ const OwnerDashboardPage = () => {
   });
 
   const handleTabChange = (tab) => {
+    console.log("OwnerDashboard: Tab changed to", tab);
+    
+    // Save the current tab to state
     setActiveTab(tab);
+    
+    // Add navigation for specific tabs
+    if (tab === 'marketing') {
+      navigate('/owner/marketing/dashboard');
+      return;
+    }
+    
+    // Add navigation for reports tab
+    if (tab === 'reports') {
+      navigate('/owner/reports');
+      return;
+    }
+    
+    // Don't add any additional navigation code for other tabs
+    // This prevents accidental redirections that could cause page refreshes
   };
 
   const toggleControlCenter = () => {
@@ -336,13 +366,51 @@ const OwnerDashboardPage = () => {
   };
 
   const renderTabContent = () => {
+    // Get the current path to check if we're on a marketing path
+    const currentPath = location.pathname;
+    
+    // Check if we're on an owner marketing path, and if so, render the correct component
+    if (currentPath.startsWith('/owner/marketing')) {
+      // Extract the specific marketing page from the URL (dashboard, loyalty, etc.)
+      const marketingPage = currentPath.split('/')[3] || 'dashboard';
+      
+      switch(marketingPage) {
+        case 'dashboard':
+          return <MarketingDashboard />;
+        case 'email':
+          return <EmailCampaigns />;
+        case 'campaigns':
+          return <CampaignManagement />;
+        case 'loyalty':
+          return <LoyaltyProgram />;
+        case 'promotions':
+          return <PromotionsManager />;
+        case 'analytics':
+          return <MarketingAnalytics />;
+        default:
+          return <MarketingDashboard />;
+      }
+    }
+    
+    // Check if we're on a reports path
+    if (currentPath.startsWith('/owner/reports')) {
+      // Extract the specific report from the URL
+      const reportPage = currentPath.split('/')[3] || 'dashboard';
+      
+      switch(reportPage) {
+        case 'turnover':
+          return <TurnoverReportPage />;
+        default:
+          return <ReportsDashboard />;
+      }
+    }
+    
+    // Normal tab rendering for non-marketing pages
     switch(activeTab) {
       case 'overview':
         return <DashboardOverview stats={stats} />;
       case 'staff':
         return <StaffManagement />;
-      case 'financial':
-        return <FinancialDashboard />;
       case 'inventory':
         return <InventoryManagement />;
       case 'products':  // Add products case
@@ -357,6 +425,8 @@ const OwnerDashboardPage = () => {
         return <div className="p-6"><h2 className="text-xl font-bold mb-4">Analytics & Reports</h2><p>Analytics and reports component would be displayed here</p></div>;
       case 'marketing':
         return <MarketingDashboard />;
+      case 'reports':
+        return <ReportsDashboard />;
       case 'settings':
         return <div className="p-6"><h2 className="text-xl font-bold mb-4">Store Settings</h2><p>Store settings component would be displayed here</p></div>;
       case 'account':
@@ -395,6 +465,14 @@ const OwnerDashboardPage = () => {
             >
               <PackageIcon fontSize="small" />
               <span>Inventory</span>
+            </button>
+            
+            <button 
+              className={`tab-button ${activeTab === 'reports' ? 'active' : ''}`}
+              onClick={() => handleTabChange('reports')}
+            >
+              <AssessmentIcon fontSize="small" />
+              <span>Reports</span>
             </button>
             
             {/* Add Products Management button */}
@@ -462,13 +540,13 @@ const OwnerDashboardPage = () => {
               <span>Account</span>
             </button>
 
-            <button 
+            {/* <button 
               className={`tab-button ${activeTab === 'financial' ? 'active' : ''}`}
               onClick={() => handleTabChange('financial')}
             >
               <FinanceIcon fontSize="small" />
               <span>Financial</span>
-            </button>
+            </button> */}
           </div>
         </div>
 

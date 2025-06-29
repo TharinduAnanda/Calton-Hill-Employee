@@ -24,22 +24,26 @@ const InventoryCategories = ({ data: initialData }) => {
     try {
       setLoading(true);
       const response = await inventoryService.getInventoryCategories();
-      setCategoryData(response.data.data || []);
+      setCategoryData(Array.isArray(response.data.data) ? response.data.data : []);
       setError(null);
     } catch (err) {
       console.error('Error fetching category data:', err);
       setError('Failed to load inventory category data');
+      setCategoryData([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Ensure categoryData is an array before using reduce
+  const categoriesArray = Array.isArray(categoryData) ? categoryData : [];
+  
   // Calculate total for summary
-  const totalItems = categoryData.reduce((sum, category) => sum + Number(category.total_items || 0), 0);
-  const totalValue = categoryData.reduce((sum, category) => sum + Number(category.total_value || 0), 0);
+  const totalItems = categoriesArray.reduce((sum, category) => sum + Number(category.total_items || 0), 0);
+  const totalValue = categoriesArray.reduce((sum, category) => sum + Number(category.total_value || 0), 0);
 
   // Prepare data for pie chart
-  const chartData = categoryData.map(category => ({
+  const chartData = categoriesArray.map(category => ({
     name: category.Category || 'Uncategorized',
     value: Number(category.total_value || 0)
   }));
@@ -66,7 +70,7 @@ const InventoryCategories = ({ data: initialData }) => {
                   <Box display="flex" justifyContent="space-between" mb={1}>
                     <Typography variant="body1">Total Categories:</Typography>
                     <Typography variant="body1" fontWeight="bold">
-                      {categoryData.length}
+                      {categoriesArray.length}
                     </Typography>
                   </Box>
                   
@@ -128,7 +132,7 @@ const InventoryCategories = ({ data: initialData }) => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {categoryData.map((category) => (
+                {categoriesArray.map((category) => (
                   <TableRow key={category.Category || 'uncategorized'}>
                     <TableCell>{category.Category || 'Uncategorized'}</TableCell>
                     <TableCell align="right">{Number(category.item_count).toLocaleString()}</TableCell>

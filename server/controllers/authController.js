@@ -224,9 +224,17 @@ async function getCurrentUser(req, res) {
     const results = await executeQuery(query, [userId]);
     
     if (results.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
+      console.error(`User not found in database. User ID: ${userId}, Type: ${type}`);
+      
+      // Return minimal user info from token
+      return res.json({
+        success: true,
+        data: {
+          id: userId,
+          email: req.user.email,
+          role: req.user.role,
+          type: req.user.type
+        }
       });
     }
     

@@ -225,16 +225,9 @@ exports.createSupplier = async (req, res) => {
 };
 
 /**
- * Update a supplier - SIMPLIFIED VERSION
+ * Update a supplier
  */
 exports.updateSupplier = async (req, res) => {
-  // const connection = await require('mysql2/promise').createConnection({
-  //   host: process.env.DB_HOST || 'localhost',
-  //   user: process.env.DB_USER || 'root',
-  //   password: process.env.DB_PASSWORD || '',
-  //   database: process.env.DB_DATABASE || 'inventory_management'
-  // });
-  
   try {
     const { id } = req.params;
     const { 
@@ -249,76 +242,68 @@ exports.updateSupplier = async (req, res) => {
       country,
       products
     } = req.body;
-
-    console.log(`Simplified update for supplier #${id}`);
     
-    // Basic validation
-    if (!name || !email) {
-      await connection.end();
-      return res.status(400).json({
-        success: false,
-        message: 'Name and email are required fields'
-      });
-    }
-
-    // 1. Update basic supplier info
-    await connection.query(
-      `UPDATE supplier SET 
-        Name = ?, 
-        Contact_Person = ?, 
-        Email = ?, 
-        Phone_Number = ?,
-        street = ?,
-        city = ?,
-        state = ?,
-        zipCode = ?,
-        country = ?
-      WHERE Supplier_ID = ?`,
-      [
-        name, 
-        contactPerson || null, 
-        email, 
-        phone || null,
-        street || null,
-        city || null,
-        state || null,
-        zipCode || null,
-        country || null,
-        id
-      ]
-    );
-    
-    console.log('Basic supplier info updated');
-    
-    // 2. Get updated supplier
-    const [updatedSupplier] = await connection.query(
-      'SELECT * FROM supplier WHERE Supplier_ID = ?',
-      [id]
-    );
-    
-    if (!updatedSupplier || updatedSupplier.length === 0) {
-      await connection.end();
+    // Check if supplier exists
+    const supplierCheck = await executeQuery('SELECT * FROM supplier WHERE Supplier_ID = ?', [id]);
+    if (!supplierCheck || supplierCheck.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Supplier not found'
       });
     }
     
-    console.log('Successfully fetched updated supplier');
+    await executeTransaction(async (connection) => {
+      // Update supplier details
+      await connection.query(
+        `UPDATE supplier SET 
+         Name = ?, 
+         Contact_Person = ?, 
+         Email = ?, 
+         Phone_Number = ?,
+         street = ?,
+         city = ?,
+         state = ?,
+         zipCode = ?,
+         country = ?
+         WHERE Supplier_ID = ?`,
+        [
+          name, 
+          contactPerson || null, 
+          email, 
+          phone || null,
+          street || null,
+          city || null,
+          state || null,
+          zipCode || null,
+          country || null,
+          id
+        ]
+      );
+      
+      // If products are provided, update product associations
+      if (Array.isArray(products)) {
+        // Delete existing associations
+        await connection.query('DELETE FROM supplier_product WHERE supplier_id = ?', [id]);
+        
+        // Add new associations
+        for (const productId of products) {
+          await connection.query(
+            'INSERT INTO supplier_product (supplier_id, product_id) VALUES (?, ?)',
+            [id, productId]
+          );
+        }
+      }
+    });
     
-    // Return response without product data for now
-    const supplier = updatedSupplier[0];
-    
-    await connection.end();
+    const updatedSupplier = await getSupplierWithProducts(id);
     
     res.status(200).json({
       success: true,
       message: 'Supplier updated successfully',
-      data: supplier
+      data: updatedSupplier
     });
   } catch (error) {
-    console.error('Error updating supplier (simplified):', error);
-    await connection.end();
+    console.error('Error updating supplier:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update supplier',

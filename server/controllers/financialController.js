@@ -57,7 +57,7 @@ exports.getFinancialSummary = async (req, res) => {
         p.Product_ID as id,
         p.Name as name,
         SUM(oi.Quantity) as quantity_sold,
-        SUM(oi.Quantity * oi.Unit_Price) as total_sales
+        SUM(oi.Quantity * oi.Price) as total_sales
       FROM order_item oi
       JOIN product p ON oi.Product_ID = p.Product_ID
       JOIN customerorder co ON oi.Order_ID = co.Order_ID
@@ -792,10 +792,10 @@ exports.generateInvoice = async (req, res) => {
         name: item.product_name,
         sku: item.product_sku,
         quantity: item.Quantity,
-        price: item.Unit_Price,
-        subtotal: item.Quantity * item.Unit_Price
+        price: item.Price,
+        subtotal: item.Quantity * item.Price
       })),
-      subtotal: orderItems.reduce((sum, item) => sum + (item.Quantity * item.Unit_Price), 0),
+      subtotal: orderItems.reduce((sum, item) => sum + (item.Quantity * item.Price), 0),
       tax: order.Tax_Amount || 0,
       shipping: order.Shipping_Cost || 0,
       total: order.Total_Amount,
@@ -815,6 +815,421 @@ exports.generateInvoice = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to generate invoice',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Generate balance sheet
+exports.getBalanceSheet = async (req, res) => {
+  try {
+    const { date } = req.query;
+    const reportDate = date || new Date().toISOString().split('T')[0]; // Default to today if no date provided
+    
+    // Get assets
+    // 1. Cash and cash equivalents
+    const cashQuery = `
+      SELECT SUM(current_balance) as total_cash
+      FROM financial_account
+      WHERE account_type IN ('BANK', 'CASH')
+      AND is_active = TRUE
+    `;
+    const [cashResult] = await executeQuery(cashQuery);
+    
+    // 2. Accounts receivable (unpaid customer orders)
+    const accountsReceivableQuery = `
+      SELECT SUM(Total_Amount) as total_receivable
+      FROM customerorder
+      WHERE Payment_Status IN ('pending', 'Pending', 'partial', 'Partial')
+      AND Order_Date <= ?
+    `;
+    const [accountsReceivableResult] = await executeQuery(accountsReceivableQuery, [reportDate]);
+    
+    // 3. Inventory value
+    const inventoryQuery = `
+      SELECT SUM(i.Stock_Level * p.cost_price) as total_inventory_value
+      FROM inventory i
+      JOIN product p ON i.Product_ID = p.Product_ID
+      WHERE p.cost_price IS NOT NULL
+    `;
+    const [inventoryResult] = await executeQuery(inventoryQuery);
+    
+    // Get liabilities
+    // 1. Accounts payable (unpaid purchase orders)
+    const accountsPayableQuery = `
+      SELECT SUM(total_amount) as total_payable
+      FROM purchase_orders
+      WHERE status IN ('pending', 'sent', 'confirmed')
+      AND order_date <= ?
+    `;
+    const [accountsPayableResult] = await executeQuery(accountsPayableQuery, [reportDate]);
+    
+    // 2. Credit accounts (negative balances)
+    const creditQuery = `
+      SELECT SUM(current_balance) as total_credit
+      FROM financial_account
+      WHERE account_type = 'CREDIT'
+      AND is_active = TRUE
+      AND current_balance < 0
+    `;
+    const [creditResult] = await executeQuery(creditQuery);
+    
+    // Calculate totals
+    const totalAssets = (cashResult[0]?.total_cash || 0) + 
+                        (accountsReceivableResult[0]?.total_receivable || 0) + 
+                        (inventoryResult[0]?.total_inventory_value || 0);
+    
+    const totalLiabilities = (accountsPayableResult[0]?.total_payable || 0) +
+                            Math.abs(creditResult[0]?.total_credit || 0);
+    
+    const equity = totalAssets - totalLiabilities;
+    
+    const balanceSheetData = {
+      report_date: reportDate,
+      assets: {
+        cash_and_equivalents: cashResult[0]?.total_cash || 0,
+        accounts_receivable: accountsReceivableResult[0]?.total_receivable || 0,
+        inventory: inventoryResult[0]?.total_inventory_value || 0,
+        total_assets: totalAssets
+      },
+      liabilities: {
+        accounts_payable: accountsPayableResult[0]?.total_payable || 0,
+        credit_accounts: Math.abs(creditResult[0]?.total_credit || 0),
+        total_liabilities: totalLiabilities
+      },
+      equity: {
+        owners_equity: equity,
+        total_equity: equity
+      },
+      total_liabilities_and_equity: totalLiabilities + equity
+    };
+    
+    res.status(200).json({
+      success: true,
+      data: balanceSheetData
+    });
+  } catch (error) {
+    console.error('Error generating balance sheet:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate balance sheet',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Generate cash flow statement
+exports.getCashFlowStatement = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date and end date are required'
+      });
+    }
+    
+    // Get cash balance at start date
+    const startingBalanceQuery = `
+      SELECT SUM(amount) as balance
+      FROM sales_transaction
+      WHERE transaction_date < ?
+    `;
+    const [startingBalanceResult] = await executeQuery(startingBalanceQuery, [startDate]);
+    
+    // Operating activities
+    // Cash from sales
+    const cashFromSalesQuery = `
+      SELECT SUM(amount) as total
+      FROM sales_transaction
+      WHERE transaction_type = 'SALE'
+      AND transaction_date BETWEEN ? AND ?
+    `;
+    const [cashFromSalesResult] = await executeQuery(cashFromSalesQuery, [startDate, endDate]);
+    
+    // Cash for expenses
+    const cashForExpensesQuery = `
+      SELECT SUM(Amount) as total
+      FROM expense
+      WHERE Expense_Date BETWEEN ? AND ?
+    `;
+    const [cashForExpensesResult] = await executeQuery(cashForExpensesQuery, [startDate, endDate]);
+    
+    // Investment activities
+    // Cash for purchase of inventory
+    const inventoryPurchasesQuery = `
+      SELECT SUM(total_amount) as total
+      FROM purchase_orders
+      WHERE order_date BETWEEN ? AND ?
+      AND status = 'confirmed'
+    `;
+    const [inventoryPurchasesResult] = await executeQuery(inventoryPurchasesQuery, [startDate, endDate]);
+    
+    // Calculate cash flow components
+    const operatingCashFlow = (cashFromSalesResult[0]?.total || 0) - (cashForExpensesResult[0]?.total || 0);
+    
+    const investingCashFlow = -(inventoryPurchasesResult[0]?.total || 0);
+    
+    // Calculate ending balance
+    const endingBalance = (startingBalanceResult[0]?.balance || 0) + operatingCashFlow + investingCashFlow;
+    
+    const cashFlowData = {
+      period: `${startDate} to ${endDate}`,
+      starting_cash_balance: startingBalanceResult[0]?.balance || 0,
+      operating_activities: {
+        cash_from_sales: cashFromSalesResult[0]?.total || 0,
+        cash_for_expenses: cashForExpensesResult[0]?.total || 0,
+        net_operating_cash_flow: operatingCashFlow
+      },
+      investing_activities: {
+        inventory_purchases: inventoryPurchasesResult[0]?.total || 0,
+        net_investing_cash_flow: investingCashFlow
+      },
+      financing_activities: {
+        net_financing_cash_flow: 0 // Placeholder for future implementation
+      },
+      net_cash_flow: operatingCashFlow + investingCashFlow,
+      ending_cash_balance: endingBalance
+    };
+    
+    res.status(200).json({
+      success: true,
+      data: cashFlowData
+    });
+  } catch (error) {
+    console.error('Error generating cash flow statement:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate cash flow statement',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Department profitability report
+exports.getDepartmentProfitability = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date and end date are required'
+      });
+    }
+    
+    // Get sales by product category
+    const salesByCategoryQuery = `
+      SELECT 
+        COALESCE(p.Category, 'Uncategorized') as category_id,
+        COALESCE(pc.name, 'Uncategorized') as category_name,
+        SUM(oi.Quantity * oi.Price) as total_sales,
+        SUM(oi.Quantity * p.cost_price) as total_cost,
+        COUNT(DISTINCT co.Order_ID) as order_count,
+        SUM(oi.Quantity) as units_sold
+      FROM order_item oi
+      JOIN customerorder co ON oi.Order_ID = co.Order_ID
+      LEFT JOIN product p ON oi.Product_ID = p.Product_ID
+      LEFT JOIN product_categories pc ON p.Category = pc.id
+      WHERE co.Order_Date BETWEEN ? AND ?
+      GROUP BY COALESCE(p.Category, 'Uncategorized'), COALESCE(pc.name, 'Uncategorized')
+      ORDER BY total_sales DESC
+    `;
+    
+    const departmentSales = await executeQuery(salesByCategoryQuery, [startDate, endDate]);
+    
+    // Calculate totals and margins
+    const departmentResults = departmentSales.map(dept => {
+      const grossProfit = dept.total_sales - dept.total_cost;
+      const grossMargin = dept.total_sales > 0 ? (grossProfit / dept.total_sales) * 100 : 0;
+      
+      return {
+        ...dept,
+        gross_profit: grossProfit,
+        gross_margin_percent: grossMargin,
+        average_order_value: dept.order_count > 0 ? dept.total_sales / dept.order_count : 0
+      };
+    });
+    
+    // Calculate overall totals
+    const totalSales = departmentResults.reduce((sum, dept) => sum + dept.total_sales, 0);
+    const totalCost = departmentResults.reduce((sum, dept) => sum + dept.total_cost, 0);
+    const totalGrossProfit = totalSales - totalCost;
+    const totalGrossMargin = totalSales > 0 ? (totalGrossProfit / totalSales) * 100 : 0;
+    
+    const profitabilityData = {
+      period: `${startDate} to ${endDate}`,
+      departments: departmentResults,
+      totals: {
+        total_sales: totalSales,
+        total_cost: totalCost,
+        total_gross_profit: totalGrossProfit,
+        overall_gross_margin: totalGrossMargin
+      }
+    };
+    
+    res.status(200).json({
+      success: true,
+      data: profitabilityData
+    });
+  } catch (error) {
+    console.error('Error generating department profitability report:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate department profitability report',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Get financial metrics dashboard data
+exports.getFinancialMetrics = async (req, res) => {
+  try {
+    const { period } = req.query;
+    let startDate, endDate;
+    const now = new Date();
+    
+    // Determine date range based on period
+    switch (period) {
+      case 'week':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+        endDate = now;
+        break;
+      case 'month':
+        startDate = new Date(now);
+        startDate.setMonth(now.getMonth() - 1);
+        endDate = now;
+        break;
+      case 'quarter':
+        startDate = new Date(now);
+        startDate.setMonth(now.getMonth() - 3);
+        endDate = now;
+        break;
+      case 'year':
+        startDate = new Date(now);
+        startDate.setFullYear(now.getFullYear() - 1);
+        endDate = now;
+        break;
+      default:
+        // Default to 30 days
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 30);
+        endDate = now;
+    }
+    
+    startDate = startDate.toISOString().split('T')[0];
+    endDate = endDate.toISOString().split('T')[0];
+    
+    // Get profitability metrics
+    const profitabilityQuery = `
+      SELECT 
+        SUM(CASE WHEN transaction_type = 'SALE' THEN amount ELSE 0 END) as total_sales,
+        COUNT(DISTINCT order_id) as order_count
+      FROM sales_transaction
+      WHERE transaction_date BETWEEN ? AND ?
+    `;
+    const [profitabilityResult] = await executeQuery(profitabilityQuery, [startDate, endDate]);
+    
+    // Get cost of goods sold
+    const cogsQuery = `
+      SELECT SUM(oi.Quantity * p.cost_price) as total_cost
+      FROM order_item oi
+      JOIN customerorder co ON oi.Order_ID = co.Order_ID
+      JOIN product p ON oi.Product_ID = p.Product_ID
+      WHERE co.Order_Date BETWEEN ? AND ?
+      AND p.cost_price IS NOT NULL
+    `;
+    const [cogsResult] = await executeQuery(cogsQuery, [startDate, endDate]);
+    
+    // Get expenses
+    const expensesQuery = `
+      SELECT SUM(Amount) as total_expenses
+      FROM expense
+      WHERE Expense_Date BETWEEN ? AND ?
+    `;
+    const [expensesResult] = await executeQuery(expensesQuery, [startDate, endDate]);
+    
+    // Get inventory metrics
+    const inventoryQuery = `
+      SELECT 
+        COUNT(*) as product_count,
+        SUM(i.Stock_Level) as total_units,
+        SUM(i.Stock_Level * p.cost_price) as inventory_value
+      FROM inventory i
+      JOIN product p ON i.Product_ID = p.Product_ID
+      WHERE p.cost_price IS NOT NULL
+    `;
+    const [inventoryResult] = await executeQuery(inventoryQuery);
+    
+    // Get sales data for previous period to calculate growth
+    const prevStartDate = new Date(startDate);
+    prevStartDate.setDate(prevStartDate.getDate() - (new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
+    const prevEndDate = new Date(startDate);
+    prevEndDate.setDate(prevEndDate.getDate() - 1);
+    
+    const prevSalesQuery = `
+      SELECT SUM(CASE WHEN transaction_type = 'SALE' THEN amount ELSE 0 END) as total_sales
+      FROM sales_transaction
+      WHERE transaction_date BETWEEN ? AND ?
+    `;
+    const [prevSalesResult] = await executeQuery(prevSalesQuery, [
+      prevStartDate.toISOString().split('T')[0],
+      prevEndDate.toISOString().split('T')[0]
+    ]);
+    
+    // Calculate metrics
+    const totalSales = profitabilityResult[0]?.total_sales || 0;
+    const totalCogs = cogsResult[0]?.total_cost || 0;
+    const totalExpenses = expensesResult[0]?.total_expenses || 0;
+    const orderCount = profitabilityResult[0]?.order_count || 0;
+    
+    const grossProfit = totalSales - totalCogs;
+    const netProfit = grossProfit - totalExpenses;
+    const grossMargin = totalSales > 0 ? (grossProfit / totalSales) * 100 : 0;
+    const netMargin = totalSales > 0 ? (netProfit / totalSales) * 100 : 0;
+    const avgOrderValue = orderCount > 0 ? totalSales / orderCount : 0;
+    
+    const prevSales = prevSalesResult[0]?.total_sales || 0;
+    const salesGrowth = prevSales > 0 ? ((totalSales - prevSales) / prevSales) * 100 : 0;
+    
+    const metricsData = {
+      period: {
+        start_date: startDate,
+        end_date: endDate,
+        name: period || '30_days'
+      },
+      profitability: {
+        total_sales: totalSales,
+        cost_of_goods_sold: totalCogs,
+        gross_profit: grossProfit,
+        gross_margin_percent: grossMargin,
+        operating_expenses: totalExpenses,
+        net_profit: netProfit,
+        net_margin_percent: netMargin
+      },
+      efficiency: {
+        average_order_value: avgOrderValue,
+        inventory_value: inventoryResult[0]?.inventory_value || 0,
+        inventory_count: inventoryResult[0]?.product_count || 0,
+        total_units: inventoryResult[0]?.total_units || 0
+      },
+      growth: {
+        sales_growth_percent: salesGrowth,
+        prev_period_sales: prevSales
+      }
+    };
+    
+    res.status(200).json({
+      success: true,
+      data: metricsData
+    });
+  } catch (error) {
+    console.error('Error getting financial metrics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve financial metrics',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

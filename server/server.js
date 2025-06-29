@@ -9,6 +9,9 @@ const morgan = require('morgan');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2/promise');
 const config = require('./config/config');
+const { executeQuery } = require('./config/db');
+// Import the trigger update function
+const { updateTriggers } = require('./config/triggerSetup');
 
 // Load environment variables
 dotenv.config();
@@ -17,19 +20,120 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Security middleware
-app.use(helmet());
+// Configure CORS - Add this before other middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true,
+  origin: 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+  exposedHeaders: ['Content-Type', 'Content-Disposition', 'Content-Length'],
+  credentials: true
 }));
+
+// Security middleware
+app.use(helmet({
+  crossOriginResourcePolicy: false // Completely disable crossOriginResourcePolicy for PDF downloads
+}));
+
+// Special handling for OPTIONS requests to PDF endpoints
+app.options('/api/purchase-orders/:id/pdf', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With');
+  res.header('Access-Control-Max-Age', '600');
+  res.sendStatus(204);
+});
+
+// Add a middleware specifically for handling inventory PDF routes properly
+app.use('/api/inventory/stock-movements/pdf', (req, res, next) => {
+  // Set CORS headers for all inventory PDF requests
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With');
+  res.header('Access-Control-Expose-Headers', 'Content-Type, Content-Disposition, Content-Length');
+  
+  // Handle OPTIONS requests immediately
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  // For other request methods, continue to the actual route handlers
+  next();
+});
+
+// Add middleware for inventory turnover report PDF
+app.use('/api/inventory/turnover-report/pdf', (req, res, next) => {
+  // Set CORS headers for inventory turnover PDF requests
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Expose-Headers', 'Content-Type, Content-Disposition, Content-Length');
+  
+  // Handle OPTIONS requests immediately
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  // For other request methods, continue to the actual route handlers
+  next();
+});
+
+// Special OPTIONS handler for inventory turnover report PDF
+app.options('/api/inventory/turnover-report/pdf', (req, res) => {
+  // Set all necessary CORS headers
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Expose-Headers', 'Content-Type, Content-Disposition, Content-Length');
+  res.header('Access-Control-Max-Age', '86400'); // 24 hours
+  
+  // Respond with 204 No Content
+  return res.sendStatus(204);
+});
 
 // Logging and parsing middleware
 app.use(morgan('dev'));
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Define PO number generator function
+const generatePONumber = async () => {
+  try {
+    // Generate a 6-digit random number
+    const randomNum = Math.floor(100000 + Math.random() * 900000);
+    const poNumber = `PO-${randomNum}`;
+    
+    // Check if this PO number already exists
+    const existingPO = await executeQuery(
+      'SELECT 1 FROM purchase_orders WHERE po_number = ?', 
+      [poNumber]
+    );
+    
+    // If it exists, recursively try again with a new random number
+    if (existingPO && existingPO.length > 0) {
+      return generatePONumber();
+    }
+    
+    return poNumber;
+  } catch (error) {
+    console.error('Error generating PO number:', error);
+    // Fallback with timestamp to ensure uniqueness
+    return `PO-${Date.now().toString().substring(3, 9)}`;
+  }
+};
+
+// Add the PO number generation route BEFORE other routes
+app.get('/api/generate-po-number', async (req, res) => {
+  try {
+    console.log('Generate PO Number route hit');
+    const poNumber = await generatePONumber();
+    res.json({ poNumber });
+  } catch (error) {
+    console.error('Error generating PO number:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -37,15 +141,17 @@ const staffRoutes = require('./routes/staffRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const debugRoutes = require('./routes/debugRoutes');
 const customerRoutes = require('./routes/customerRoutes');
-const inventoryRoutes = require('./routes/inventoryRoutes'); // Add this to your imports
+const inventoryRoutes = require('./routes/inventoryRoutes'); 
 const productRoutes = require('./routes/productRoutes');
 const supplierRoutes = require('./routes/supplierRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const ownerRoutes = require('./routes/ownerRoutes');
-const financialRoutes = require('./routes/financialRoutes'); // Add this to your imports
-const returnRoutes = require('./routes/returnRoutes'); // This should already be in your file, but make sure it's there
-const uploadRoutes = require('./routes/uploadRoutes'); // Add this with your other require statements
-const marketingRoutes = require('./routes/marketingRoutes'); // Add this with your other route imports
+const financialRoutes = require('./routes/financialRoutes'); 
+const returnRoutes = require('./routes/returnRoutes'); 
+const uploadRoutes = require('./routes/uploadRoutes'); 
+const marketingRoutes = require('./routes/marketingRoutes'); 
+const purchaseOrderRoutes = require('./routes/purchaseOrderRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -53,16 +159,17 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/customers', customerRoutes);
-app.use('/api/inventory', require('./routes/inventoryRoutes')); // Make sure this line exists in your app.js or server.js file
+app.use('/api/inventory', inventoryRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/products', require('./routes/categoryRoutes')); // Add this line to your server.js file where you register routes
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/owner', ownerRoutes);
-app.use('/api/financial', financialRoutes); // Add this to your routes configuration
-app.use('/api/returns', returnRoutes); // This should already be in your file, but make sure it's there
-app.use('/api/upload', uploadRoutes); // Add this with your other app.use statements
-app.use('/api/marketing', marketingRoutes); // Fix the mounting point for marketing routes
+app.use('/api/financial', financialRoutes);
+app.use('/api/returns', returnRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/marketing', marketingRoutes);
+app.use('/api/purchase-orders', purchaseOrderRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Basic route for API health check
 app.get('/api/health', (req, res) => {
@@ -82,6 +189,18 @@ app.get('/', (req, res) => {
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/build')));
   app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+  });
+} else {
+  // In development mode, still serve index.html for non-API routes to support React Router
+  // This allows refreshing the page to work correctly
+  app.use(express.static(path.join(__dirname, '../client/build')));
+  app.get('*', (req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    // For all other routes, serve the React app
     res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
   });
 }
@@ -167,7 +286,14 @@ async function startServer() {
     
     console.log('✅ Database connection successful');
     
-    // Call seedLoyaltyData after connecting to the database
+    // Update database triggers
+    try {
+      await updateTriggers();
+      console.log('✅ Database triggers updated successfully');
+    } catch (err) {
+      console.error('⚠️ Warning: Failed to update database triggers:', err);
+      // We continue even if trigger update fails, it's not critical
+    }
     
     // Start the server
     app.listen(PORT, () => {

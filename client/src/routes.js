@@ -16,9 +16,8 @@ import ForgotPassword from './pages/Auth/ForgotPassword';
 import StoreSettings from './pages/Owner/StoreSettings';
 import OwnerAccountSettings from './pages/Owner/OwnerAccountSettings';
 import StaffManagement from './pages/Staff/StaffManagement';
-import FinancialDashboard from './pages/Financial/FinancialDashboard';
-import CustomerManagement from './pages/Customers/CustomerManagement'; // Add this import
-// import CustomerList from './pages/Customers/CustomerList';
+import FinancialDashboard from './pages/Reports/FinancialDashboard';
+import CustomerManagement from './pages/Customers/CustomerManagement';
 import CustomerDetails from './pages/Customers/CustomerDetails';
 import DashboardRedirect from './components/common/DashboardRedirect';
 import InventoryManagement from './pages/Inventory/InventoryManagement';
@@ -31,23 +30,19 @@ import CampaignManagement from './pages/Marketing/CampaignManagement';
 import LoyaltyProgram from './pages/Marketing/LoyaltyProgram';
 import PromotionsManager from './pages/Marketing/PromotionsManager';
 import MarketingAnalytics from './pages/Marketing/MarketingAnalytics';
-
-
-// Keep only the ReturnsList import:
+import PurchaseOrders from './pages/Inventory/PurchaseOrders';
+import CreatePurchaseOrder from './pages/Inventory/CreatePurchaseOrder';
 import ReturnsList from './pages/Returns/ReturnsList';
-
-// Import the error components that already exist in your project
 import NotFound from './components/common/NotFound';
 import Unauthorized from './components/common/Unauthorized';
-
-// Add these imports at the top of the file
 import SuppliersPage from './pages/Suppliers/SuppliersPage';
 import SupplierForm from './pages/Suppliers/SupplierForm';
-
-// Add this import for ProductsPage
 import ProductsPage from './pages/Products/ProductsPage';
+import StaffLayout from './layouts/StaffLayout';
+import OwnerLayout from './layouts/OwnerLayout';
+import ReportsDashboard from './pages/Reports/ReportsDashboard';
+import TurnoverReportPage from './pages/Reports/TurnoverReportPage';
 
-// Example check
 const routes = [
   {
     path: '/',
@@ -74,14 +69,13 @@ const routes = [
     protected: false
   },
   
-  // Dashboard routes
   {
-  path: '/dashboard',
-  component: DashboardRedirect,
-  exact: true,
-  protected: true,
-  allowedRoles: ['owner', 'manager', 'staff']
-},
+    path: '/dashboard',
+    component: DashboardRedirect,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner', 'manager', 'staff']
+  },
   {
     path: '/owner/dashboard',
     component: OwnerDashboardPage,
@@ -89,68 +83,103 @@ const routes = [
     protected: true,
     allowedRoles: ['owner']
   },
+  
   {
-    path: '/staff/dashboard',
-    component: StaffDashboard,
+    path: '/staff',
+    component: StaffLayout,
+    protected: true,
+    allowedRoles: ['manager', 'staff'],
+    children: [
+      {
+        path: 'dashboard',
+        component: StaffDashboard,
+        exact: true,
+        protected: true,
+        allowedRoles: ['manager', 'staff']
+      },
+      {
+        path: 'management',
+        component: StaffManagement,
+        exact: true, 
+        protected: true,
+        allowedRoles: ['owner', 'manager']
+      },
+      {
+        path: 'settings',
+        component: StaffDashboard,
+        exact: true,
+        protected: true,
+        allowedRoles: ['manager']
+      },
+      {
+        path: 'tasks',
+        component: StaffDashboard,
+        exact: true,
+        protected: true,
+        allowedRoles: ['manager', 'staff']
+      },
+      {
+        path: 'marketing',
+        component: StaffDashboard,
+        exact: true,
+        protected: true,
+        allowedRoles: ['manager']
+      }
+    ]
+  },
+  
+  {
+    path: '/owner/customers',
+    component: CustomerManagement,
     exact: true, 
     protected: true,
-    allowedRoles: ['manager', 'staff']
+    allowedRoles: ['owner']
   },
-
-  // Customer management routes
-   {
-  path: '/owner/customers',
-  component: CustomerManagement, // CORRECT: Component reference
-  exact: true, 
-  protected: true,
-  allowedRoles: ['owner']
-},
-  // {
-  //   path: '/customers',
-  //   component: <CustomerList />,
-  //   exact: true,
-  //   protected: true,
-  //   allowedRoles: ['owner', 'manager', 'staff']
-  // },
   {
-  path: '/customers/:id',
-  component: CustomerDetails, // CORRECT: Component reference
-  exact: true,
-  protected: true,
-  allowedRoles: ['owner', 'manager', 'staff']
-},
-  
-  // Staff management routes
-  {
-    path: '/staff/management',
-    component: StaffManagement,
+    path: '/customers/:id',
+    component: CustomerDetails,
     exact: true,
     protected: true,
-    allowedRoles: ['owner', 'manager']
+    allowedRoles: ['owner', 'manager', 'staff']
   },
   
-  // Inventory routes
   {
     path: '/inventory',
-    component: InventoryList,
-    exact: true,
+    component: StaffLayout,
     protected: true,
-    allowedRoles: ['owner', 'manager', 'staff']
+    allowedRoles: ['owner', 'manager', 'staff'],
+    children: [
+      {
+        path: '',
+        component: InventoryList,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner', 'manager', 'staff']
+      },
+      {
+        path: 'add',
+        component: AddInventoryItem,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner', 'manager']
+      },
+      {
+        path: ':id',
+        component: InventoryItem,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner', 'manager', 'staff']
+      },
+      {
+        path: 'low-stock',
+        component: LowStockItems,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner', 'manager']
+      }
+    ]
   },
-  {
-    path: '/inventory/add',
-    component: AddInventoryItem,
-    exact: true,
-    protected: true,
-    allowedRoles: ['owner', 'manager']
-  },
-  {
-    path: '/inventory/:id',
-    component: InventoryItem,
-    exact: true,
-    protected: true,
-    allowedRoles: ['owner', 'manager', 'staff']
-  },
+  
   {
     path: '/owner/inventory',
     component: InventoryManagement,
@@ -174,10 +203,18 @@ const routes = [
   },
   {
     path: '/owner/inventory/low-stock',
-    component: LowStockItems,
-    exact: true,
+    component: StaffLayout,
     protected: true,
-    allowedRoles: ['owner']
+    allowedRoles: ['owner', 'manager'],
+    children: [
+      {
+        path: '',
+        component: LowStockItems,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner', 'manager']
+      }
+    ]
   },
   {
     path: '/owner/inventory/batch/:productId',
@@ -194,66 +231,190 @@ const routes = [
     allowedRoles: ['owner']
   },
   
-  // Product routes
   {
-    path: '/products/*',  // <-- Add wildcard to match all sub-paths
-    component: ProductsPage,
+    path: '/owner/inventory/purchase-orders',
+    component: OwnerLayout,
     protected: true,
-    allowedRoles: ['owner', 'manager', 'staff']
+    allowedRoles: ['owner', 'manager'],
+    children: [
+      {
+        path: '',
+        component: PurchaseOrders,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner', 'manager']
+      },
+      {
+        path: 'create',
+        component: CreatePurchaseOrder,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner', 'manager']
+      },
+      {
+        path: ':id',
+        component: CreatePurchaseOrder,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner', 'manager']
+      }
+    ]
   },
   
-  // Supplier routes
+  {
+    path: '/products/*',
+    component: StaffLayout,
+    protected: true,
+    allowedRoles: ['owner', 'manager', 'staff'],
+    children: [
+      {
+        path: '*',
+        component: ProductsPage,
+        protected: true,
+        allowedRoles: ['owner', 'manager', 'staff']
+      }
+    ]
+  },
+  
   {
     path: '/suppliers',
-    component: SuppliersPage,
+    component: StaffLayout,
     protected: true,
-    allowedRoles: ['owner', 'manager', 'staff']
-  },
-  {
-    path: '/suppliers/:id',
-    component: SupplierDetail,
-    protected: true,
-    allowedRoles: ['owner', 'manager', 'staff']
-  },
-  {
-    path: '/suppliers/add',
-    component: SupplierForm,
-    protected: true,
-    allowedRoles: ['owner', 'manager']
-  },
-  {
-    path: '/suppliers/edit/:id',
-    component: SupplierForm,
-    protected: true,
-    allowedRoles: ['owner', 'manager']
+    allowedRoles: ['owner', 'manager', 'staff'],
+    children: [
+      {
+        path: '',
+        component: SuppliersPage,
+        protected: true,
+        allowedRoles: ['owner', 'manager', 'staff']
+      },
+      {
+        path: ':id',
+        component: SupplierDetail,
+        protected: true,
+        allowedRoles: ['owner', 'manager', 'staff']
+      },
+      {
+        path: 'add',
+        component: SupplierForm,
+        protected: true,
+        allowedRoles: ['owner', 'manager']
+      },
+      {
+        path: 'edit/:id',
+        component: SupplierForm,
+        protected: true,
+        allowedRoles: ['owner', 'manager']
+      }
+    ]
   },
   
-  // Order routes
   {
     path: '/orders',
-    component: OrderList,
-    exact: true,
+    component: StaffLayout,
     protected: true,
-    allowedRoles: ['owner', 'manager', 'staff']
-  },
-  {
-    path: '/orders/:id',
-    component: OrderDetail,
-    exact: true,
-    protected: true,
-    allowedRoles: ['owner', 'manager', 'staff']
+    allowedRoles: ['owner', 'manager', 'staff'],
+    children: [
+      {
+        path: '',
+        component: OrderList,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner', 'manager', 'staff']
+      },
+      {
+        path: ':id',
+        component: OrderDetail,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner', 'manager', 'staff']
+      }
+    ]
   },
   
-  // Returns routes
+  {
+    path: '/sales',
+    component: StaffLayout,
+    protected: true,
+    allowedRoles: ['owner', 'manager', 'staff'],
+    children: [
+      {
+        path: '',
+        component: OrderList,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner', 'manager', 'staff']
+      }
+    ]
+  },
+  
   {
     path: '/owner/returns',
-    component: ReturnsList,
-    exact: true,
+    component: StaffLayout,
     protected: true,
-    allowedRoles: ['owner', 'manager']
+    allowedRoles: ['owner', 'manager'],
+    children: [
+      {
+        path: '',
+        component: ReturnsList,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner', 'manager']
+      }
+    ]
   },
   
-  // Settings routes
+  {
+    path: '/marketing',
+    component: StaffLayout,
+    protected: true,
+    allowedRoles: ['manager'],
+    children: [
+      {
+        path: 'dashboard',
+        component: MarketingDashboard,
+        exact: true,
+        protected: true,
+        allowedRoles: ['manager']
+      },
+      {
+        path: 'email',
+        component: EmailCampaigns,
+        exact: true,
+        protected: true,
+        allowedRoles: ['manager']
+      },
+      {
+        path: 'campaigns',
+        component: CampaignManagement,
+        exact: true,
+        protected: true,
+        allowedRoles: ['manager']
+      },
+      {
+        path: 'loyalty',
+        component: LoyaltyProgram,
+        exact: true,
+        protected: true,
+        allowedRoles: ['manager']
+      },
+      {
+        path: 'promotions',
+        component: PromotionsManager,
+        exact: true,
+        protected: true,
+        allowedRoles: ['manager']
+      },
+      {
+        path: 'analytics',
+        component: MarketingAnalytics,
+        exact: true,
+        protected: true,
+        allowedRoles: ['manager']
+      }
+    ]
+  },
+  
   {
     path: '/settings',
     component: StoreSettings,
@@ -270,13 +431,20 @@ const routes = [
   },
   {
     path: '/owner/financial',
-    component: FinancialDashboard,
-    exact: true,
+    component: OwnerLayout,
     protected: true,
-    allowedRoles: ['owner']
+    allowedRoles: ['owner'],
+    children: [
+      {
+        path: '',
+        component: FinancialDashboard,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner']
+      }
+    ]
   },
   
-  // Error routes
   {
     path: '/unauthorized',
     component: Unauthorized,
@@ -289,54 +457,90 @@ const routes = [
     protected: false
   },
 
+  // Owner-specific marketing routes - these will preserve owner navigation context
   {
-  path: '/marketing/dashboard',
-  component: MarketingDashboard,
-  exact: true,
-  protected: true,
-  allowedRoles: ['owner', 'manager']
-},
-{
-  path: '/marketing/email',
-  component: EmailCampaigns,
-  exact: true,
-  protected: true,
-  allowedRoles: ['owner', 'manager']
-},
-{
-  path: '/marketing/campaigns',
-  component: CampaignManagement,
-  exact: true,
-  protected: true,
-  allowedRoles: ['owner', 'manager']
-},
-{
-  path: '/marketing/loyalty',
-  component: LoyaltyProgram,
-  exact: true,
-  protected: true,
-  allowedRoles: ['owner', 'manager']
-},
-{
-  path: '/marketing/promotions',
-  component: PromotionsManager,
-  exact: true,
-  protected: true,
-  allowedRoles: ['owner', 'manager']
-},
+    path: '/owner/marketing',
+    component: OwnerLayout,
+    protected: true,
+    allowedRoles: ['owner'],
+    children: [
+      {
+        path: 'dashboard',
+        component: MarketingDashboard,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner']
+      },
+      {
+        path: 'email',
+        component: EmailCampaigns,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner']
+      },
+      {
+        path: 'campaigns',
+        component: CampaignManagement,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner']
+      },
+      {
+        path: 'loyalty',
+        component: LoyaltyProgram,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner']
+      },
+      {
+        path: 'promotions',
+        component: PromotionsManager,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner']
+      },
+      {
+        path: 'analytics',
+        component: MarketingAnalytics,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner']
+      }
+    ]
+  },
 
-
-{
-  path: '/marketing/analytics',
-  component: MarketingAnalytics,
-  exact: true,
-  protected: true,
-  allowedRoles: ['owner', 'manager']
-}
-
+  // Add Reports routes
+  {
+    path: '/owner/reports',
+    component: ReportsDashboard,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner']
+  },
+  {
+    path: '/owner/reports/turnover',
+    component: TurnoverReportPage,
+    exact: true,
+    protected: true,
+    allowedRoles: ['owner']
+  },
+  {
+    path: '/owner/reports/financial',
+    component: OwnerLayout,
+    protected: true,
+    allowedRoles: ['owner'],
+    children: [
+      {
+        path: '',
+        component: FinancialDashboard,
+        exact: true,
+        protected: true,
+        allowedRoles: ['owner']
+      }
+    ]
+  },
 ];
 
-// Add this validation
 routes.forEach(route => {
   if (!route.component) {
     console.error(`Route configuration error: ${route.path} has no component defined`);

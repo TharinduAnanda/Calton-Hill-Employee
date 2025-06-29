@@ -5,10 +5,13 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  Button
+  Button,
+  TextField,
+  InputAdornment
 } from '@mui/material';
+import DescriptionIcon from '@mui/icons-material/Description';
 
-const ConfirmDialog = ({ open, onClose, onConfirm, title, message }) => {
+const ConfirmDialog = ({ open, onClose, onConfirm, title, message, orderData }) => {
   return (
     <Dialog open={open || false} onClose={onClose}>
       <DialogTitle>{title || 'Confirm Action'}</DialogTitle>
@@ -16,6 +19,23 @@ const ConfirmDialog = ({ open, onClose, onConfirm, title, message }) => {
         <DialogContentText>
           {message || 'Are you sure you want to perform this action?'}
         </DialogContentText>
+        {orderData && (
+          <TextField
+            margin="dense"
+            label="Subject"
+            fullWidth
+            variant="outlined"
+            value={`Purchase Order #${orderData?.poNumber || ''}`}
+            InputProps={{
+              readOnly: true,
+              startAdornment: (
+                <InputAdornment position="start">
+                  <DescriptionIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} color="primary">

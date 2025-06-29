@@ -41,7 +41,7 @@ const api = axios.create({
 // Configure API requests to handle authentication
 api.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -58,10 +58,30 @@ api.interceptors.response.use(
   error => {
     // Handle expired tokens or authentication issues
     if (error.response && error.response.status === 401) {
-      // Clear invalid token
-      localStorage.removeItem('token');
-      // Redirect to login if needed
-      window.location.href = '/login';
+      console.log("API 401 error - checking if this is a normal API error or session expiration");
+      
+      // Check if we're already on the dashboard before redirecting
+      // This prevents redirect loops when a user is properly authenticated
+      const currentPath = window.location.pathname;
+      
+      // Don't redirect if we're on any dashboard page
+      if (currentPath.includes('/dashboard') || 
+          currentPath.includes('/owner') || 
+          currentPath.includes('/staff') ||
+          currentPath.includes('/marketing')) {
+        console.log("Detected 401 error on dashboard/marketing route - suppressing redirect");
+        // Return a friendly error object instead of redirecting
+        return Promise.reject({
+          ...error,
+          isSuppressedAuth: true,
+          friendlyMessage: "Authentication error while loading data. Please try again or refresh the page."
+        });
+      } else {
+        // Only redirect to login for true auth failures on non-dashboard pages
+        console.log("Authentication required - redirecting to login");
+        localStorage.removeItem('authToken');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

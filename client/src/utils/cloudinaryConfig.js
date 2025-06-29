@@ -1,9 +1,9 @@
 import { Cloudinary } from 'cloudinary-core';
 
 const cloudinaryConfig = {
-  cloudName: 'djy8hclco',
-  apiKey: '172476961585941',
-  uploadPreset: 'ml_default' // Use an unsigned upload preset
+  cloudName: 'dyuyhfrch',
+  apiKey: '742696356823931',
+  uploadPreset: 'ml_default'
 };
 
 export const cloudinary = new Cloudinary({

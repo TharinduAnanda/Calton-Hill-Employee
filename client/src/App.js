@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, useLocation, Navigate, Outlet } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import routes from './routes';
@@ -23,6 +23,8 @@ import LoyaltyProgram from './pages/Marketing/LoyaltyProgram';
 import CampaignManagement from './pages/Marketing/CampaignManagement';
 import ControlCenter from './pages/Owner/ControlCenter';
 import EmailCampaigns from './pages/Marketing/EmailCampaigns';
+import PurchaseOrders from './pages/Inventory/PurchaseOrders';
+import CreatePurchaseOrder from './pages/Inventory/CreatePurchaseOrder';
 
 // Define error components as standalone components
 const UnauthorizedPage = () => (
@@ -122,13 +124,33 @@ const MainLayout = ({ children }) => {
   // Use main layout for authenticated pages
   return (
     <div className="app-container">
-      <Navbar 
-        unreadNotificationCount={unreadNotificationCount}
-        onControlCenterToggle={toggleControlCenter}
-      />
+      {/* StaffLayout now handles its own Navbar */}
+      {!location.pathname.startsWith('/staff') && !location.pathname.startsWith('/inventory') && 
+       !location.pathname.startsWith('/products') && !location.pathname.startsWith('/suppliers') && 
+       !location.pathname.startsWith('/orders') && !location.pathname.startsWith('/marketing') &&
+       !location.pathname.startsWith('/owner/returns') && !location.pathname.startsWith('/owner/inventory/purchase-orders') && (
+        <Navbar 
+          unreadNotificationCount={unreadNotificationCount}
+          onControlCenterToggle={toggleControlCenter}
+        />
+      )}
       <div className="content-wrapper">
-        <Sidebar />
-        <main className="main-content">
+        {/* Only show sidebar on certain pages */}
+        {!location.pathname.startsWith('/staff') && !location.pathname.startsWith('/inventory') &&
+         !location.pathname.startsWith('/products') && !location.pathname.startsWith('/suppliers') && 
+         !location.pathname.startsWith('/orders') && !location.pathname.startsWith('/marketing') &&
+         !location.pathname.startsWith('/owner/returns') && !location.pathname.startsWith('/owner/inventory/purchase-orders') && (
+          <Sidebar />
+        )}
+        <main className={location.pathname.startsWith('/staff') || 
+                        location.pathname.startsWith('/inventory') ||
+                        location.pathname.startsWith('/products') ||
+                        location.pathname.startsWith('/suppliers') ||
+                        location.pathname.startsWith('/orders') ||
+                        location.pathname.startsWith('/marketing') ||
+                        location.pathname.startsWith('/owner/returns') ||
+                        location.pathname.startsWith('/owner/inventory/purchase-orders')
+                        ? '' : 'main-content'}>
           {children}
         </main>
       </div>
@@ -136,9 +158,57 @@ const MainLayout = ({ children }) => {
   );
 };
 
+// Function to recursively generate routes from route config
+const generateRoutes = (routeConfig) => {
+  return routeConfig.map((route) => {
+    // Create the route element based on protection status
+    const routeElement = route.protected ? (
+      <ProtectedRoute
+        allowedRoles={route.allowedRoles}
+        fallbackPath={route.fallbackPath || '/unauthorized'}
+      >
+        <route.component />
+      </ProtectedRoute>
+    ) : (
+      <route.component />
+    );
+
+    // If this route has children
+    if (route.children && route.children.length > 0) {
+      return (
+        <Route
+          key={`route-${route.path}`}
+          path={route.path}
+          element={routeElement}
+        >
+          {/* Recursively generate child routes */}
+          {generateRoutes(route.children)}
+        </Route>
+      );
+    }
+
+    // Route with no children
+    return (
+      <Route
+        key={`route-${route.path}`}
+        path={route.path}
+        element={routeElement}
+        exact={route.exact}
+      />
+    );
+  });
+};
+
 // App content with routes
 const AppContent = () => {
   const { loading, currentUser } = useAuth();
+  const location = useLocation();
+  const [key, setKey] = useState(location.pathname);
+  
+  // Force rerender when location changes
+  useEffect(() => {
+    setKey(location.pathname);
+  }, [location.pathname]);
   
   if (loading) {
     return (
@@ -152,7 +222,7 @@ const AppContent = () => {
     <>
       <RouteDebugger />
       <MainLayout>
-        <Routes>
+        <Routes key={key}>
           {/* Fix for /login redirect */}
           <Route 
             path="/login" 
@@ -165,157 +235,8 @@ const AppContent = () => {
             } 
           />
           
-          {/* Public routes */}
-          {routes
-            .filter(route => !route.protected)
-            .map((route, index) => (
-              <Route
-                key={`public-${index}`}
-                path={route.path}
-                element={<route.component />}
-              />
-            ))}
-          
-          {/* Protected routes */}
-          {routes
-            .filter(route => route.protected)
-            .map((route, index) => (
-              <Route
-                key={`protected-${index}`}
-                path={route.path}
-                element={
-                  <ProtectedRoute 
-                    allowedRoles={route.allowedRoles}
-                    fallbackPath={route.fallbackPath || '/unauthorized'}
-                  >
-                    <route.component />
-                  </ProtectedRoute>
-                }
-              />
-            ))}
-          <Route 
-            path="/staff/management" 
-            element={
-              <ProtectedRoute 
-                allowedRoles={['owner']}
-                fallbackPath="/unauthorized"
-              >
-                <StaffManagement />
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Dashboard route */}
-          <Route 
-            path="/dashboard" 
-            element={
-              <ProtectedRoute allowedRoles={['owner', 'manager', 'staff']}>
-                <DashboardRedirect />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* Owner dashboard route */}
-          <Route 
-            path="/owner/dashboard" 
-            element={
-              <ProtectedRoute allowedRoles={['owner']}>
-                <OwnerDashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Staff dashboard route */}
-          <Route 
-            path="/staff/dashboard" 
-            element={
-              <ProtectedRoute allowedRoles={['staff', 'manager']}>
-                <StaffDashboard />
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Customer details route */}
-          <Route 
-            path="/customers/:id" 
-            element={
-              <ProtectedRoute allowedRoles={['admin', 'owner', 'manager']}>
-                <CustomerDetails />
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Inventory routes */}
-          <Route 
-            path="/owner/inventory" 
-            element={
-              <ProtectedRoute allowedRoles={['owner']}>
-                <InventoryManagement />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/owner/inventory/:id" 
-            element={
-              <ProtectedRoute allowedRoles={['owner']}>
-                <InventoryItem />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/owner/inventory/add" 
-            element={
-              <ProtectedRoute allowedRoles={['owner']}>
-                <AddInventoryItem />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/owner/inventory/low-stock" 
-            element={
-              <ProtectedRoute allowedRoles={['owner']}>
-                <LowStockItems />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/owner/inventory/batch/:productId" 
-            element={
-              <ProtectedRoute allowedRoles={['owner']}>
-                <BatchManagement />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/owner/inventory/stock-movement" 
-            element={
-              <ProtectedRoute allowedRoles={['owner']}>
-                <StockMovementHistory />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* Returns routes */}
-          <Route 
-            path="/owner/returns" 
-            element={
-              <ProtectedRoute allowedRoles={['owner', 'manager']}>
-                <ReturnsList />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* Marketing routes */}
-          <Route path="/marketing/loyalty" element={<LoyaltyProgram />} />
-          <Route path="/marketing/campaigns" element={<CampaignManagement />} />
-          <Route 
-            path="/marketing/email-campaigns" 
-            element={
-              <ProtectedRoute allowedRoles={['owner', 'manager', 'staff']}>
-                <EmailCampaigns />
-              </ProtectedRoute>
-            } 
-          />
+          {/* Generate routes from route config */}
+          {generateRoutes(routes)}
           
           {/* Error routes - Using direct components instead of referencing the object */}
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
